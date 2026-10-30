@@ -151,6 +151,8 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
         const baseConfig = {
           entities: [
             __dirname + '/modules/session/**/*.entity{.ts,.js}',
+            __dirname + '/modules/tenant/**/*.entity{.ts,.js}',
+            __dirname + '/modules/user/**/*.entity{.ts,.js}',
             __dirname + '/modules/webhook/**/*.entity{.ts,.js}',
             __dirname + '/modules/message/**/*.entity{.ts,.js}',
             __dirname + '/modules/template/**/*.entity{.ts,.js}',
