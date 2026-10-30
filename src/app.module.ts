@@ -47,6 +47,8 @@ import { AgentToolsModule } from './core/agent-tools/agent-tools.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { SearchModule } from './modules/search/search.module';
 import { SqlitePermissionsBoot } from './database/sqlite-file-permissions';
+// importando los modulos de usuarios
+import { HumanAuthModule } from './modules/human-auth/human-auth.module';
 
 // Only import QueueModule if explicitly enabled to avoid Redis connection errors
 const queueModules: Array<Type | DynamicModule> = [];
@@ -311,7 +313,8 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
     IntegrationModule, // Integration Fabric: @Public provider-webhook ingress + fast-ack pipeline
     ...searchModules, // Global message search (opt-out via SEARCH_ENABLED=false; default ON)
     ...mcpModules, // MCP Streamable-HTTP server (opt-in via MCP_ENABLED=true)
-    ...serveStaticModules, // Bundled dashboard SPA (production single-port setup)
+    ...serveStaticModules, // Bundled dashboard SPA (production single-port setup),
+    HumanAuthModule, // este es el modulo de loguin y creacion de usuarios 
   ],
   // Runs after every DataSource has initialized (they initialize eagerly in their provider
   // factories, and onApplicationBootstrap fires after every onModuleInit), tightening the SQLite
