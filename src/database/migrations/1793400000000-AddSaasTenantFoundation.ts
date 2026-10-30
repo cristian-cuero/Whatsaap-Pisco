@@ -16,13 +16,13 @@ export class AddSaasTenantFoundation1793400000000 implements MigrationInterface 
     const isPostgres = queryRunner.connection.options.type === 'postgres';
     const timestamp = isPostgres ? 'TIMESTAMP' : 'datetime';
     const boolTrue = isPostgres ? 'true' : '1';
-    const boolFalse = isPostgres ? 'false' : '0';
+    const uuidDefault = isPostgres ? ' DEFAULT gen_random_uuid()::varchar' : '';
     const defaultTenantId = '00000000-0000-4000-8000-000000000001';
 
     if (!(await queryRunner.hasTable('tenants'))) {
       await queryRunner.query(
         `CREATE TABLE "tenants" (
-          "id" varchar PRIMARY KEY NOT NULL,
+          "id" varchar PRIMARY KEY NOT NULL${uuidDefault},
           "name" varchar(120) NOT NULL,
           "slug" varchar(80) NOT NULL,
           "status" varchar(20) NOT NULL DEFAULT 'active',
