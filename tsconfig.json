@@ -20,7 +20,7 @@
     "skipLibCheck": true,
     // TypeScript 6 no longer auto-includes every node_modules/@types package: the globals the
     // project relies on must be listed. node covers src; jest covers the colocated *.spec.ts.
-    "types": ["node", "jest"],
+    //"types": ["node", "jest"],
     // The whole strict family, which is also TypeScript 6's own default. Entity and DTO properties
     // the framework populates carry `!`, since no constructor assigns them.
     "strict": true,

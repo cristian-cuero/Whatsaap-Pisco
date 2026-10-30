@@ -444,6 +444,7 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
     }
   }
 
+  // Metodo Encargado De La Creacion De La Session  EN La BV
   async create(dto: CreateSessionDto): Promise<Session> {
     // Check if session with same name exists
     const existing = await this.sessionRepository.findOne({

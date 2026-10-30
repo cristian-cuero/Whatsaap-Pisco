@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 
 import { Tenant } from './tenant.entity';
-import { User } from '../../../user/entities/user.entity';
+import { User } from '../../user/entities/user.entity';
 
 /**
  * Roles que puede tener un usuario dentro de una empresa.

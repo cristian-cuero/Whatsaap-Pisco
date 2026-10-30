@@ -505,7 +505,10 @@ export class BaileysLifecycle {
 
     // Baileys raises the counter above 0 once, when a first link's initial sync ends (or times out).
     // Whole-creds emits carry the field too, so only that transition on a first link arms the pull.
+
+
     let awaitingFirstSync = !((state.creds.accountSyncCounter ?? 0) > 0);
+        // este se encarga de guardar las credenciales en el archivo de estado de autenticación cada vez que se actualizan
     sock.ev.on('creds.update', update => {
       void saveCreds().catch(err => {
         this.host.logger.warn('Baileys creds.update save failed', {
