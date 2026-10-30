@@ -1,8 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index ,ManyToOne, JoinColumn} from 'typeorm';
 import { DateTransformer } from '../../../common/transformers/date.transformer';
 import { NulFreeTransformer } from '../../../common/transformers/nul-free.transformer';
 import { jsonColumnType, dateColumnType } from '../../../common/utils/column-types';
 import type { AccountRestriction } from '../../../engine/interfaces/whatsapp-engine.interface';
+import { Tenant } from '../../tenant/entities/tenant.entity';
 
 export enum SessionStatus {
   CREATED = 'created',
@@ -24,6 +25,10 @@ export class Session {
     // Empresa propietaria de esta sesión de WhatsApp.
   @Column({ type: 'uuid', nullable: true })
   tenantId!: string | null;
+    // Relación con la empresa propietaria de la sesión.
+  @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'tenantId' })
+  tenant!: Tenant;
 
   @Column({ type: 'varchar', length: 100, })
   name!: string;
