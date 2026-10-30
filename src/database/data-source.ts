@@ -45,6 +45,8 @@ const sourceGlob = (...segments: string[]): string => path.join(__dirname, ...se
 // auth/audit entities and pollute `migration:generate` against the data DB with their DDL.
 const dataEntities = [
   sourceGlob('..', 'modules', 'session', '**', '*.entity{.ts,.js}'),
+  sourceGlob('..', 'modules', 'tenant', '**', '*.entity{.ts,.js}'),
+  sourceGlob('..', 'modules', 'user', '**', '*.entity{.ts,.js}'),
   sourceGlob('..', 'modules', 'webhook', '**', '*.entity{.ts,.js}'),
   sourceGlob('..', 'modules', 'message', '**', '*.entity{.ts,.js}'),
   sourceGlob('..', 'modules', 'template', '**', '*.entity{.ts,.js}'),
