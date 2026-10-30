@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { DateTransformer } from '../../../common/transformers/date.transformer';
 import { NulFreeTransformer } from '../../../common/transformers/nul-free.transformer';
 import { jsonColumnType, dateColumnType } from '../../../common/utils/column-types';
@@ -16,11 +16,16 @@ export enum SessionStatus {
 }
 
 @Entity('sessions')
+@Index(['tenantId', 'name'], { unique: true })
 export class Session {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true })
+    // Empresa propietaria de esta sesión de WhatsApp.
+  @Column({ type: 'uuid', nullable: true })
+  tenantId!: string | null;
+
+  @Column({ type: 'varchar', length: 100, })
   name!: string;
 
   @Column({

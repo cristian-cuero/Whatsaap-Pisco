@@ -136,7 +136,7 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
       dataSourceFactory: createMainDataSource,
     }),
 
-    // Data Storage Database (pluggable - user data)
+    // Data Storage Database (pluggable - user data) Es El atrreglo De las Entidades
     TypeOrmModule.forRootAsync({
       name: 'data',
       imports: [ConfigModule],
@@ -144,7 +144,9 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
       // The postgres branch runs its boot migrations under a cross-replica advisory lock inside
       // this factory (see pg-boot-migrations.ts) instead of TypeORM's unsynchronized built-in
       // migrationsRun; SQLite with synchronize is initialized there too, to deduplicate terminal webhook
-      // failures before the schema sync, and other sqlite options keep the library's default path.
+      // failures before the schema sync, and other sqlite options keep the library's default path.}
+
+      /// es
       dataSourceFactory: createBootDataSource,
       useFactory: (configService: ConfigService) => {
         const dbType = configService.get<'sqlite' | 'postgres'>('dataDatabase.type', 'sqlite');
@@ -158,6 +160,8 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
             __dirname + '/modules/integration/**/*.entity{.ts,.js}',
             __dirname + '/modules/status-store/**/*.entity{.ts,.js}',
             __dirname + '/modules/automation/**/*.entity{.ts,.js}',
+            __dirname + '/modules/tenant/**/*.entity{.ts,.js}',
+            __dirname + '/modules/user/**/*.entity{.ts,.js}',
           ],
           migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
           logging: configService.get<boolean>('dataDatabase.logging', false),

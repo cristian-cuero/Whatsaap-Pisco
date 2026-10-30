@@ -43,6 +43,8 @@ const sourceGlob = (...segments: string[]): string => path.join(__dirname, ...se
 // Scoped to the DATA-owned modules only (session/webhook/message/template/engine/integration/status-store/automation),
 // mirroring the runtime data connection (app.module.ts). A broad '**' glob would also sweep in the main-owned
 // auth/audit entities and pollute `migration:generate` against the data DB with their DDL.
+
+//aqui van las entidades de los modulos que se van a usar en la base de datos
 const dataEntities = [
   sourceGlob('..', 'modules', 'session', '**', '*.entity{.ts,.js}'),
   sourceGlob('..', 'modules', 'webhook', '**', '*.entity{.ts,.js}'),
@@ -52,6 +54,8 @@ const dataEntities = [
   sourceGlob('..', 'modules', 'integration', '**', '*.entity{.ts,.js}'),
   sourceGlob('..', 'modules', 'status-store', '**', '*.entity{.ts,.js}'),
   sourceGlob('..', 'modules', 'automation', '**', '*.entity{.ts,.js}'),
+  sourceGlob('..', 'modules', 'tenant', '**', '*.entity{.ts,.js}'),
+  sourceGlob('..', 'modules', 'user', '**', '*.entity{.ts,.js}'),
 ];
 const dataMigrations = [sourceGlob('migrations', '*{.ts,.js}')];
 
