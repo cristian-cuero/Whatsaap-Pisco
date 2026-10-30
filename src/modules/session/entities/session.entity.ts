@@ -23,6 +23,10 @@ export class Session {
   @Column({ type: 'varchar', length: 100, unique: true })
   name!: string;
 
+  // Company/workspace that owns this WhatsApp session.
+  @Column({ type: 'varchar', length: 36 })
+  tenantId!: string;
+
   @Column({
     type: 'varchar',
     length: 50,
