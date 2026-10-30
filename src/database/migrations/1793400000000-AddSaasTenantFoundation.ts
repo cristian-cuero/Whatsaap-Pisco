@@ -46,7 +46,7 @@ export class AddSaasTenantFoundation1793400000000 implements MigrationInterface 
     if (!(await queryRunner.hasTable('users'))) {
       await queryRunner.query(
         `CREATE TABLE "users" (
-          "id" varchar PRIMARY KEY NOT NULL,
+          "id" varchar PRIMARY KEY NOT NULL${uuidDefault},
           "name" varchar(120) NOT NULL,
           "email" varchar(190) NOT NULL,
           "passwordHash" varchar(255) NOT NULL,
@@ -62,7 +62,7 @@ export class AddSaasTenantFoundation1793400000000 implements MigrationInterface 
     if (!(await queryRunner.hasTable('tenant_users'))) {
       await queryRunner.query(
         `CREATE TABLE "tenant_users" (
-          "id" varchar PRIMARY KEY NOT NULL,
+          "id" varchar PRIMARY KEY NOT NULL${uuidDefault},
           "tenantId" varchar(36) NOT NULL,
           "userId" varchar(36) NOT NULL,
           "role" varchar(20) NOT NULL DEFAULT 'operator',
