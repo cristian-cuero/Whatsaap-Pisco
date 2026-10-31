@@ -186,22 +186,6 @@ export class SessionController {
     return sessions.map(s => this.transformSession(s));
   }
 
-  @ChatScoped('agnostic')
-  @Get(':sessionId')
-  @ApiOperation({ summary: 'Get session by ID' })
-  @ApiParam({ name: 'sessionId', description: 'Session ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Session details',
-    type: SessionResponseDto,
-  })
-  @ApiResponse({ status: 400, description: 'The session id is not a UUID' })
-  @ApiResponse({ status: 404, description: 'Session not found' })
-  async findOne(@Param('sessionId', ParseUUIDPipe) id: string): Promise<SessionResponseDto> {
-    const session = await this.sessionService.findOne(id);
-    return this.transformSession(session);
-  }
-
   //buscar una Session Por El tenat
   @Get('tenant')
   @Public()
@@ -234,6 +218,22 @@ export class SessionController {
     );
 
     return sessions.map(session => this.transformSession(session));
+  }
+
+  @ChatScoped('agnostic')
+  @Get(':sessionId')
+  @ApiOperation({ summary: 'Get session by ID' })
+  @ApiParam({ name: 'sessionId', description: 'Session ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Session details',
+    type: SessionResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'The session id is not a UUID' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async findOne(@Param('sessionId', ParseUUIDPipe) id: string): Promise<SessionResponseDto> {
+    const session = await this.sessionService.findOne(id);
+    return this.transformSession(session);
   }
 
   @Get(':sessionId/config')
