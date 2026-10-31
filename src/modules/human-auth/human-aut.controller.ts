@@ -14,6 +14,11 @@ import { Public } from '../auth/decorators/auth.decorators';
 import { HumanAuthService } from './human-auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { Get, UseGuards } from '@nestjs/common';
+import { HumanJwtGuard } from './guards/human-jwt.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import type  { HumanJwtPayload } from './guards/human-jwt.guard';
+import { CurrentTenant } from './decorators/current-tenant.decorator';
 // esta es la ruta
 @Controller('auth')
 export class HumanAuthController {
@@ -43,4 +48,20 @@ export class HumanAuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.humanAuthService.login(loginDto);
   }
+
+  // Consultar los datos del usuario autenticado.
+@Public()
+@UseGuards(HumanJwtGuard)
+@Get('me')
+getProfile(@CurrentUser() user: HumanJwtPayload,
+@CurrentTenant() tenatid : string) {
+  return {
+    message: 'Usuario autenticado correctamente.',
+    user: {
+      id: user.sub,
+      tenatid,
+      role: user.role,
+    },
+  };
+}
 }

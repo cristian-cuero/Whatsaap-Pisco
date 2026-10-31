@@ -1,4 +1,4 @@
-// Es El JWT  por Asi Decirlo 
+// El guard será el encargado de leer el encabezado Authorization, verificar la firma del token y comprobar que no haya expirado.
 import {
   CanActivate,
   ExecutionContext,

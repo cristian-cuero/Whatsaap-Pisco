@@ -28,7 +28,7 @@ export class Session {
     // Relación con la empresa propietaria de la sesión.
   @ManyToOne(() => Tenant, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'tenantId' })
-  tenant!: Tenant;
+  tenant!: Tenant | null;
 
   @Column({ type: 'varchar', length: 100, })
   name!: string;

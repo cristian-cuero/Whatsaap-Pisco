@@ -10,6 +10,7 @@ import { HumanAuthService } from './human-auth.service';
 import { User } from '../user/entities/user.entity';
 import { Tenant } from '../tenant/entities/tenant.entity';
 import { TenantUser } from '../tenant/entities/tenant-user.entity';
+import { HumanJwtGuard } from './guards/human-jwt.guard';
 
 @Module({
   imports: [
@@ -34,8 +35,8 @@ import { TenantUser } from '../tenant/entities/tenant-user.entity';
   // creando las depencidas con los contraladores Y Lo Servicios 
   controllers: [HumanAuthController],
 
-  providers: [HumanAuthService],
+  providers: [HumanAuthService, HumanJwtGuard],
 
-  exports: [HumanAuthService, JwtModule],
+  exports: [HumanAuthService, JwtModule, HumanJwtGuard],
 })
 export class HumanAuthModule {}
