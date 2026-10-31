@@ -444,19 +444,23 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
     }
   }
 
-  // Metodo Encargado De La Creacion De La Session  EN La BV
-  async create(dto: CreateSessionDto): Promise<Session> {
+  // Metodo Encargado De La Creacion De La Session  EN La BV , si viene el tenat lo resivimos
+  async create(dto: CreateSessionDto,   tenantId?: string,): Promise<Session> {
     // Check if session with same name exists
     const existing = await this.sessionRepository.findOne({
-      where: { name: dto.name },
-    });
+  where: tenantId
+    ? { name: dto.name, tenantId }
+    : { name: dto.name },
+});
 
     if (existing) {
       throw new ConflictException(`Session with name '${dto.name}' already exists`);
     }
 
+    // cre ala entidad session 
     const session = this.sessionRepository.create({
       name: dto.name,
+     ...(tenantId ? { tenantId } : {}),
       config: dto.config || {},
       proxyUrl: dto.proxyUrl || null,
       proxyType: dto.proxyType || null,

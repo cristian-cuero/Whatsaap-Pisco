@@ -54,6 +54,7 @@ import {
   RequireRole,
   RequireUnscopedKey,
   SessionScoped,
+  Public,
 } from '../auth/decorators/auth.decorators';
 import { ChatScopeService } from '../auth/chat-scope.service';
 import { ApiKey, ApiKeyRole } from '../auth/entities/api-key.entity';
@@ -63,6 +64,9 @@ import {
   PAIRING_TRANSPORT_503,
   RECIPIENT_LOOKUP_503,
 } from '../../common/openapi/engine-status-responses';
+import { UseGuards } from '@nestjs/common';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
 
 @ApiTags('sessions')
 @Controller('sessions')
@@ -119,6 +123,29 @@ export class SessionController {
     });
     return this.transformSession(session);
   }
+
+
+  // creacion de la session pero con el tenant id
+  @UseGuards(HumanJwtGuard)
+  @ApiOperation({summary: " Create a session for the authenticated tenant"})
+  @ApiResponse({
+    status:201,
+    description: 'tenatn session created ',
+    type: SessionResponseDto,
+  })
+  async createTenantSession(
+    @Body() dto: CreateSessionDto ,
+    @CurrentTenant() tenantId: string,
+  ): Promise<SessionResponseDto> {
+      // El tenant se obtiene del JWT, nunca del body.
+    const session = await this.sessionService.create(dto, tenantId);
+    await this.auditService.logInfo(AuditAction.SESSION_CREATED, {
+    sessionId: session.id,
+    sessionName: session.name,
+  });
+     return this.transformSession(session);
+  
+ }
 
   @Get()
   @ApiOperation({ summary: 'List all sessions' })
