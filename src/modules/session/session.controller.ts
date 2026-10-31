@@ -220,6 +220,62 @@ export class SessionController {
     return sessions.map(session => this.transformSession(session));
   }
 
+  // Encontramos La Session Por El Tenant Y El ID
+  @Get('tenant/:sessionId')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  async findTenantSession(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<SessionResponseDto> {
+    const session = await this.sessionService.findOne(id, tenantId);
+    return this.transformSession(session);
+  }
+
+  //iniciar session con JWT
+  @Post('tenant/:sessionId/start')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  @HttpCode(HttpStatus.OK)
+  async startTenantSession(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<SessionResponseDto> {
+    // Verificamos que la sesión pertenezca al tenant autenticado.
+    await this.sessionService.findOne(id, tenantId);
+
+    // Iniciamos WhatsApp.
+    const session = await this.sessionService.start(id, {
+      explicit: true,
+    });
+
+    await this.auditService.logInfo(AuditAction.SESSION_STARTED, {
+      sessionId: session.id,
+      sessionName: session.name,
+    });
+
+    return this.transformSession(session);
+  }
+
+  // solictar El Qr
+  @Get('tenant/:sessionId/qr')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  async getTenantQRCode(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<QRCodeResponseDto> {
+    await this.sessionService.findOne(id, tenantId);
+
+    const qrCode = await this.sessionService.getQRCode(id);
+
+    await this.auditService.logInfo(AuditAction.SESSION_QR_GENERATED, {
+      sessionId: id,
+    });
+
+    return qrCode;
+  }
+
   @ChatScoped('agnostic')
   @Get(':sessionId')
   @ApiOperation({ summary: 'Get session by ID' })
