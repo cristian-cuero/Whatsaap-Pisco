@@ -126,6 +126,8 @@ export class SessionController {
 
 
   // creacion de la session pero con el tenant id
+  @Post('tenant')
+  @Public()
   @UseGuards(HumanJwtGuard)
   @ApiOperation({summary: " Create a session for the authenticated tenant"})
   @ApiResponse({
