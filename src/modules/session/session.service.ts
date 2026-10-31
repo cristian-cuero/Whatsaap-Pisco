@@ -445,22 +445,20 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
   }
 
   // Metodo Encargado De La Creacion De La Session  EN La BV , si viene el tenat lo resivimos
-  async create(dto: CreateSessionDto,   tenantId?: string,): Promise<Session> {
+  async create(dto: CreateSessionDto, tenantId?: string): Promise<Session> {
     // Check if session with same name exists
     const existing = await this.sessionRepository.findOne({
-  where: tenantId
-    ? { name: dto.name, tenantId }
-    : { name: dto.name },
-});
+      where: tenantId ? { name: dto.name, tenantId } : { name: dto.name },
+    });
 
     if (existing) {
       throw new ConflictException(`Session with name '${dto.name}' already exists`);
     }
 
-    // cre ala entidad session 
+    // cre ala entidad session
     const session = this.sessionRepository.create({
       name: dto.name,
-     ...(tenantId ? { tenantId } : {}),
+      ...(tenantId ? { tenantId } : {}),
       config: dto.config || {},
       proxyUrl: dto.proxyUrl || null,
       proxyType: dto.proxyType || null,
@@ -504,7 +502,11 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
     return saved;
   }
 
-  async findAll(allowedSessions?: string[] | null, opts: SessionListOptions = {}): Promise<Session[]> {
+  async findAll(
+    allowedSessions?: string[] | null,
+    opts: SessionListOptions = {},
+    tenantId?: string,
+  ): Promise<Session[]> {
     // A session-restricted key only lists its own sessions; an unrestricted key (null/empty
     // allowlist) lists all — mirroring the ApiKeyGuard allowedSessions model so a scoped key
     // cannot enumerate every session through this aggregate route.
@@ -524,6 +526,12 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
     if (typeof opts.name === 'string' && opts.name.length > 0) {
       where.name = opts.name;
     }
+
+    // Si viene tenantId, solo buscamos sesiones de ese tenant
+    if (tenantId) {
+      where.tenantId = tenantId;
+    }
+
     if (Object.keys(where).length > 0) {
       options.where = where;
     }

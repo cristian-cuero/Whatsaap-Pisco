@@ -124,30 +124,28 @@ export class SessionController {
     return this.transformSession(session);
   }
 
-
   // creacion de la session pero con el tenant id
   @Post('tenant')
   @Public()
   @UseGuards(HumanJwtGuard)
-  @ApiOperation({summary: " Create a session for the authenticated tenant"})
+  @ApiOperation({ summary: ' Create a session for the authenticated tenant' })
   @ApiResponse({
-    status:201,
+    status: 201,
     description: 'tenatn session created ',
     type: SessionResponseDto,
   })
   async createTenantSession(
-    @Body() dto: CreateSessionDto ,
+    @Body() dto: CreateSessionDto,
     @CurrentTenant() tenantId: string,
   ): Promise<SessionResponseDto> {
-      // El tenant se obtiene del JWT, nunca del body.
+    // El tenant se obtiene del JWT, nunca del body.
     const session = await this.sessionService.create(dto, tenantId);
     await this.auditService.logInfo(AuditAction.SESSION_CREATED, {
-    sessionId: session.id,
-    sessionName: session.name,
-  });
-     return this.transformSession(session);
-  
- }
+      sessionId: session.id,
+      sessionName: session.name,
+    });
+    return this.transformSession(session);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all sessions' })
@@ -202,6 +200,40 @@ export class SessionController {
   async findOne(@Param('sessionId', ParseUUIDPipe) id: string): Promise<SessionResponseDto> {
     const session = await this.sessionService.findOne(id);
     return this.transformSession(session);
+  }
+
+  //buscar una Session Por El tenat
+  @Get('tenant')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  @ApiOperation({ summary: 'List sessions belonging to the authenticated tenant' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of sessions for the authenticated tenant',
+    type: [SessionResponseDto],
+  })
+  async findTenantSessions(
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('name') name?: string | string[],
+  ): Promise<SessionResponseDto[]> {
+    // Evitamos filtros vacíos o repetidos, igual que en el endpoint original.
+    if (Array.isArray(name) || name === '') {
+      throw new BadRequestException('name must be a single non-empty value');
+    }
+    // El tenantId viene del JWT, nunca del usuario ni del body.
+    const sessions = await this.sessionService.findAll(
+      undefined,
+      {
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+        name,
+      },
+      tenantId,
+    );
+
+    return sessions.map(session => this.transformSession(session));
   }
 
   @Get(':sessionId/config')
