@@ -1136,7 +1136,7 @@ export const sessionApi = {
       body: JSON.stringify({ participants }),
     }),
   setGroupAdmins: (id: string, groupId: string, participants: string[], admin: boolean) =>
-    request<GroupParticipantsAck>(
+    tenantAuthRequest<GroupParticipantsAck>(
       `/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/participants/${admin ? 'promote' : 'demote'}`,
       { method: 'POST', body: JSON.stringify({ participants }) },
     ),
