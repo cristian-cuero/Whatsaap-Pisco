@@ -16,6 +16,76 @@ import { fetchAllPages } from '../utils/fetchAllPages';
 // too — otherwise split-origin deployments break. Empty VITE_API_URL → '/api'.
 export const API_ORIGIN = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
 export const API_BASE_URL = `${API_ORIGIN}/api`;
+
+// =============================================================================
+// Human Authentication API (JWT)
+// =============================================================================
+
+export interface HumanLoginResponse {
+  message: string;
+  accessToken: string;
+  tokenType: 'Bearer';
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+}
+
+export interface HumanMeResponse {
+  message: string;
+  user: {
+    id: string;
+    tenantId?: string;
+    tenatid?: string;
+    role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+  };
+}
+
+async function humanAuthRequest<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  token?: string,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      typeof data.message === 'string'
+        ? data.message
+        : `Error de autenticación: HTTP ${response.status}`,
+    );
+  }
+
+  return data as T;
+}
+
+export const humanAuthApi = {
+  login: (email: string, password: string) =>
+    humanAuthRequest<HumanLoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
+  me: (token: string) =>
+    humanAuthRequest<HumanMeResponse>('/auth/me', {}, token),
+};
+
 // Warn (not refuse — would break dev + TLS-terminating-proxy) when the API origin is an
 // insecure http:// URL pointing at a non-localhost host (API keys sent in cleartext).
 if (API_ORIGIN) warnIfInsecureHttpUrl(API_ORIGIN, 'VITE_API_URL');
