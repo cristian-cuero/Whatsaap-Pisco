@@ -69,6 +69,26 @@ async function humanAuthRequest<T>(endpoint: string, options: RequestInit = {}, 
   return data as T;
 }
 
+function tenantAuthRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = sessionStorage.getItem('openwa_access_token');
+  if (!token) throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+  return humanAuthRequest<T>(endpoint, options, token);
+}
+
+async function tenantAuthBlob(endpoint: string, signal?: AbortSignal): Promise<Blob> {
+  const token = sessionStorage.getItem('openwa_access_token');
+  if (!token) throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    signal,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(typeof data.message === 'string' ? data.message : `HTTP ${response.status}`);
+  }
+  return response.blob();
+}
+
 export const humanAuthApi = {
   login: (email: string, password: string) =>
     humanAuthRequest<HumanLoginResponse>('/auth/login', {
@@ -1128,7 +1148,7 @@ export const sessionApi = {
       async (limit, offset) => {
         signal?.throwIfAborted();
         try {
-          const data = await request<Chat[]>(`/sessions/${id}/chats?limit=${limit}&offset=${offset}`, { signal });
+          const data = await tenantAuthRequest<Chat[]>(`/sessions/tenant/${id}/chats?limit=${limit}&offset=${offset}`, { signal });
           return { data, total: data.length < limit ? offset + data.length : Infinity };
         } catch (err) {
           lastError = err;
@@ -1151,40 +1171,40 @@ export const sessionApi = {
   // `messageIds` are the messages to acknowledge. Baileys acknowledges them one by one and, without any, only the
   // newest it holds; whatsapp-web.js reads the whole chat and ignores them.
   markChatRead: (id: string, chatId: string, messageIds?: string[]) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/read`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/read`, {
       method: 'POST',
       body: JSON.stringify({ chatId, ...(messageIds?.length ? { messageIds } : {}) }),
     }),
   // Both also delete the gateway's stored copy of the chat's messages (rows, media, search entries).
   clearChatMessages: (id: string, chatId: string) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/${encodeURIComponent(chatId)}/messages`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/${encodeURIComponent(chatId)}/messages`, {
       method: 'DELETE',
     }),
   deleteChat: (id: string, chatId: string) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/delete`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/delete`, {
       method: 'POST',
       body: JSON.stringify({ chatId }),
     }),
   // Archive and pin answer `{ success: false }` when the engine declined to act (WhatsApp keeps at most three
   // chats pinned), which the callers treat as a failure. Mute has no declined outcome and always answers success.
   archiveChat: (id: string, chatId: string, archive: boolean) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/archive`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/archive`, {
       method: 'POST',
       body: JSON.stringify({ chatId, archive }),
     }),
   pinChat: (id: string, chatId: string, pin: boolean) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/pin`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/pin`, {
       method: 'POST',
       body: JSON.stringify({ chatId, pin }),
     }),
   /** `muteUntil` is epoch MILLISECONDS; null unmutes. */
   muteChat: (id: string, chatId: string, muteUntil: number | null) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/mute`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/mute`, {
       method: 'POST',
       body: JSON.stringify({ chatId, muteUntil }),
     }),
   markChatUnread: (id: string, chatId: string) =>
-    request<{ success: boolean }>(`/sessions/${id}/chats/unread`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/tenant/${id}/chats/unread`, {
       method: 'POST',
       body: JSON.stringify({ chatId }),
     }),
@@ -1193,16 +1213,16 @@ export const sessionApi = {
   // read to decide whether an older page exists — a page short of `limit` is; a chat with live
   // traffic keeps growing `total` after the fact, so comparing rows-held against it stops early.
   getChatMessages: (id: string, chatId: string, limit = 100, offset = 0) =>
-    request<{ messages: ChatMessage[]; total: number }>(
-      `/sessions/${id}/messages?chatId=${encodeURIComponent(chatId)}&limit=${limit}&offset=${offset}`,
+    tenantAuthRequest<{ messages: ChatMessage[]; total: number }>(
+      `/sessions/${id}/messages/tenant?chatId=${encodeURIComponent(chatId)}&limit=${limit}&offset=${offset}`,
     ),
   // Live history straight from WhatsApp (bypasses the DB) — backfills a thread the gateway never
   // captured, e.g. a freshly paired session whose persisted store is still empty.
   // includeMedia downloads the media payload (base64) for history messages so stickers/images/
   // video/voice render instead of collapsing to an empty timestamp-only bubble.
   getChatHistory: (id: string, chatId: string, limit = 100, includeMedia = false) =>
-    request<EngineHistoryMessage[]>(
-      `/sessions/${id}/messages/${encodeURIComponent(chatId)}/history?limit=${limit}${
+    tenantAuthRequest<EngineHistoryMessage[]>(
+      `/sessions/${id}/messages/tenant/${encodeURIComponent(chatId)}/history?limit=${limit}${
         includeMedia ? '&includeMedia=true' : ''
       }`,
     ),
@@ -1211,8 +1231,8 @@ export const sessionApi = {
   // `{ omitted: true, sizeBytes }` marker and the bytes are only reachable here. Served as an
   // attachment (Content-Disposition), so callers download it rather than rendering it inline.
   getMessageMediaBlob: (id: string, chatId: string, messageId: string, signal?: AbortSignal) =>
-    requestBlob(
-      `/sessions/${id}/messages/${encodeURIComponent(chatId)}/${encodeURIComponent(messageId)}/media`,
+    tenantAuthBlob(
+      `/sessions/${id}/messages/tenant/${encodeURIComponent(chatId)}/${encodeURIComponent(messageId)}/media`,
       signal,
     ),
   getSubscribedChannels: (id: string) => request<Channel[]>(`/sessions/${id}/channels`),
@@ -1312,7 +1332,7 @@ export const contactApi = {
     const { items, throttled } = await fetchAllPages(
       async (limit, offset) => {
         try {
-          const data = await request<Contact[]>(`/sessions/${sessionId}/contacts?limit=${limit}&offset=${offset}`);
+          const data = await tenantAuthRequest<Contact[]>(`/sessions/${sessionId}/contacts/tenant?limit=${limit}&offset=${offset}`);
           // The route answers a bare array with no total: a short page is the last one.
           return { data, total: data.length < limit ? offset + data.length : Infinity };
         } catch (err) {
@@ -1328,9 +1348,9 @@ export const contactApi = {
     return items;
   },
   /** The ids of the contacts this account has blocked. */
-  listBlocked: (sessionId: string) => request<string[]>(`/sessions/${sessionId}/contacts/blocked`),
+  listBlocked: (sessionId: string) => tenantAuthRequest<string[]>(`/sessions/${sessionId}/contacts/tenant/blocked`),
   block: (sessionId: string, contactId: string) =>
-    request<{ success: boolean }>(`/sessions/${sessionId}/contacts/${encodeURIComponent(contactId)}/block`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/${sessionId}/contacts/tenant/${encodeURIComponent(contactId)}/block`, {
       method: 'POST',
     }),
   unblock: (sessionId: string, contactId: string) =>
@@ -1339,29 +1359,29 @@ export const contactApi = {
     }),
   /** Save the contact to the account's address book, or rename the entry it has. */
   upsert: (sessionId: string, contactId: string, firstName: string, lastName?: string) =>
-    request<{ success: boolean }>(`/sessions/${sessionId}/contacts/${encodeURIComponent(contactId)}`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/${sessionId}/contacts/tenant/${encodeURIComponent(contactId)}`, {
       method: 'PUT',
       body: JSON.stringify({ firstName, ...(lastName ? { lastName } : {}) }),
     }),
   checkNumber: (sessionId: string, number: string) =>
-    request<CheckNumberResponse>(`/sessions/${sessionId}/contacts/check/${encodeURIComponent(number)}`),
+    tenantAuthRequest<CheckNumberResponse>(`/sessions/${sessionId}/contacts/tenant/check/${encodeURIComponent(number)}`),
   // Returns the contact/group profile picture URL. Both engines return null when the user hid their
   // picture or has none. The URL is a signed WhatsApp CDN link that expires in a few hours, so the
   // dashboard caches it for an hour (see useProfilePicture) and re-fetches on expiry.
   profilePicture: (sessionId: string, contactId: string) =>
-    request<ProfilePictureResponse>(`/sessions/${sessionId}/contacts/${encodeURIComponent(contactId)}/profile-picture`),
+    tenantAuthRequest<ProfilePictureResponse>(`/sessions/${sessionId}/contacts/tenant/${encodeURIComponent(contactId)}/profile-picture`),
   // Best-effort resolution of a contact id (e.g. an @lid privacy id) to its phone number (MSISDN
   // digits), or null when the engine can't map it. Cached a day by useResolvedPhone.
   resolvePhone: (sessionId: string, contactId: string) =>
-    request<{ contactId: string; phone: string | null }>(
-      `/sessions/${sessionId}/contacts/${encodeURIComponent(contactId)}/phone`,
+    tenantAuthRequest<{ contactId: string; phone: string | null }>(
+      `/sessions/${sessionId}/contacts/tenant/${encodeURIComponent(contactId)}/phone`,
     ),
   // Batch-resolve profile picture URLs for a whole sidebar in ONE request — the per-chat burst of
   // parallel single fetches exhausts the per-IP throttle (429s). Engine lookups run 5 at a time
   // server-side; ids beyond the backend's 50-id cap are dropped client-side too.
   profilePictures: (sessionId: string, contactIds: string[]) =>
-    request<{ pictures: Record<string, string | null> }>(
-      `/sessions/${sessionId}/contacts/profile-pictures?ids=${contactIds
+    tenantAuthRequest<{ pictures: Record<string, string | null> }>(
+      `/sessions/${sessionId}/contacts/tenant/profile-pictures?ids=${contactIds
         .slice(0, 50)
         .map(encodeURIComponent)
         .join(',')}`,
@@ -1428,7 +1448,7 @@ export const auditApi = {
 
 export const messageApi = {
   sendText: (sessionId: string, chatId: string, text: string) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/send-text`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/send-text`, {
       method: 'POST',
       body: JSON.stringify({ chatId, text }),
     }),
@@ -1438,28 +1458,28 @@ export const messageApi = {
     mediaType: 'image' | 'video' | 'audio' | 'document',
     payload: SendMediaPayload,
   ) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/send-${mediaType}`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/send-${mediaType}`, {
       method: 'POST',
       body: JSON.stringify({ chatId, ...payload }),
     }),
   sendLocation: (sessionId: string, data: SendLocationPayload) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/send-location`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/send-location`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   sendContact: (sessionId: string, data: SendContactPayload) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/send-contact`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/send-contact`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   // Stickers take the same media body as the other send-* endpoints (base64 XOR url + mimetype).
   sendSticker: (sessionId: string, chatId: string, payload: SendMediaPayload) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/send-sticker`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/send-sticker`, {
       method: 'POST',
       body: JSON.stringify({ chatId, ...payload }),
     }),
   sendPoll: (sessionId: string, data: SendPollPayload) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/send-poll`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/send-poll`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -1481,7 +1501,7 @@ export const messageApi = {
       method: 'POST',
     }),
   reply: (sessionId: string, data: { chatId: string; quotedMessageId: string; text: string }) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/reply`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/reply`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -1490,17 +1510,17 @@ export const messageApi = {
    * `messageId` is the prompt's WhatsApp id; `buttonId` is `buttons[].id`.
    */
   clickButton: (sessionId: string, data: { chatId: string; messageId: string; buttonId: string; text?: string }) =>
-    request<MessageResponse>(`/sessions/${sessionId}/messages/click-button`, {
+    tenantAuthRequest<MessageResponse>(`/sessions/${sessionId}/messages/tenant/click-button`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   react: (sessionId: string, data: { chatId: string; messageId: string; emoji: string }) =>
-    request<void>(`/sessions/${sessionId}/messages/react`, {
+    tenantAuthRequest<void>(`/sessions/${sessionId}/messages/tenant/react`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   delete: (sessionId: string, data: { chatId: string; messageId: string; forEveryone?: boolean }) =>
-    request<void>(`/sessions/${sessionId}/messages/delete`, {
+    tenantAuthRequest<void>(`/sessions/${sessionId}/messages/tenant/delete`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
