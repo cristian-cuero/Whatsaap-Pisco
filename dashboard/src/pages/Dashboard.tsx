@@ -11,7 +11,7 @@ import {
   useSessionStatsQuery,
   useWebhooksQuery,
   useStopSessionMutation,
-  useStatsOverviewQuery,
+  useTenantMessageStatsQuery,
 } from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import { isSessionStarted } from '../utils/sessionActions';
@@ -41,11 +41,16 @@ export function Dashboard() {
   // them, since the gateway audits every refusal as a failed authentication; their cards show the
   // unavailable placeholder.
   const { data: webhooks } = useWebhooksQuery(canWrite);
-  const { data: overview } = useStatsOverviewQuery(canReadStats);
+const { data: messageStats } = useTenantMessageStatsQuery();
   const stopMutation = useStopSessionMutation();
   const unavailable = '—';
-  const messagesToday = overview ? overview.messages.today.sent + overview.messages.today.received : unavailable;
-  const totalMessages = overview ? overview.messages.sent + overview.messages.received : unavailable;
+  const messagesToday = messageStats
+  ? messageStats.today.sent + messageStats.today.received
+  : unavailable;
+
+const totalMessages = messageStats
+  ? messageStats.sent + messageStats.received
+  : unavailable;
   const loading = loadingSessions;
   // Statistics that are unread or refused do not mean no session is connected: the list says which are.
   const readyCount = stats?.ready ?? sessions.filter(session => session.status === 'ready').length;
