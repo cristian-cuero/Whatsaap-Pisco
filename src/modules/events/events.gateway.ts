@@ -426,19 +426,73 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     // Accept the key only via Socket.IO's `auth` field or the header — never the query string, which
     // leaks the credential into proxy/access logs. (The deprecated `?apiKey=` fallback was removed.)
-    const handshakeAuth = client.handshake.auth as { apiKey?: string } | undefined;
-    const apiKey = handshakeAuth?.apiKey || (client.handshake.headers['x-api-key'] as string);
+    const handshakeAuth = client.handshake.auth as
+      | {
+          apiKey?: string;
+          token?: string;
+        }
+      | undefined;
 
-    if (!apiKey) {
-      this.logger.warn(`Client ${client.id} rejected: No API key provided`);
-      void this.auditService.logWarn(AuditAction.API_KEY_AUTH_FAILED, {
-        ipAddress: clientIp,
-        metadata: { surface: 'websocket' },
-        errorMessage: 'missing API key',
-      });
-      client.emit('message', this.createError('UNAUTHORIZED', 'API key required'));
-      client.disconnect();
-      return;
+    const apiKey = handshakeAuth?.apiKey || (client.handshake.headers['x-api-key'] as string);
+    const token = handshakeAuth?.token;
+
+    // Si no viene API Key, intentamos autenticar mediante JWT humano.
+    if (!apiKey && token) {
+      try {
+        if (!this.jwtService) {
+          throw new Error('JWT service no está disponible');
+        }
+
+        const payload = await this.jwtService.verifyAsync<HumanJwtPayload>(token);
+
+        if (
+          typeof payload.sub !== 'string' ||
+          typeof payload.tenantId !== 'string' ||
+          !Object.values(TenantRole).includes(payload.role)
+        ) {
+          throw new Error('El JWT no contiene datos válidos');
+        }
+
+        // Guardamos la identidad verificada del usuario.
+        (
+          client.data as {
+            humanJwtPayload?: HumanJwtPayload;
+            humanJwtToken?: string;
+          }
+        ).humanJwtPayload = payload;
+
+        (
+          client.data as {
+            humanJwtPayload?: HumanJwtPayload;
+            humanJwtToken?: string;
+          }
+        ).humanJwtToken = token;
+
+        // La conexión ya fue autenticada: devolvemos el cupo del handshake.
+        this.handshakeLimiter.refund(handshakeKey, handshakeReservation);
+
+        if (client.disconnected) {
+          return;
+        }
+
+        this.logger.log(`Client connected with human JWT: ${client.id} (tenant: ${payload.tenantId})`);
+
+        return;
+      } catch (error) {
+        this.logger.warn(`Client ${client.id} rejected: JWT auth error`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        void this.auditService.logWarn(AuditAction.API_KEY_AUTH_FAILED, {
+          ipAddress: clientIp,
+          metadata: { surface: 'websocket', authType: 'human-jwt' },
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+
+        client.emit('message', this.createError('UNAUTHORIZED', 'JWT inválido o expirado'));
+        client.disconnect();
+        return;
+      }
     }
 
     try {
