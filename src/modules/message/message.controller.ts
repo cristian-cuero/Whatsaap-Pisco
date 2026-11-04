@@ -866,6 +866,54 @@ export class MessageController {
     };
   }
 
+  @Get('tenant/:chatId/history')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantChatHistory(
+    @Param('sessionId') sessionId: string,
+    @Param('chatId') chatId: string,
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+    @Query('includeMedia') includeMedia?: string,
+    @Query('deep') deep?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    const abort = new AbortController();
+    res?.on('close', () => abort.abort());
+    return this.messageService.getChatHistory(
+      sessionId,
+      chatId,
+      parsedLimit !== undefined && !Number.isNaN(parsedLimit) ? parsedLimit : undefined,
+      includeMedia === 'true' || includeMedia === '1',
+      deep === 'true' || deep === '1',
+      abort.signal,
+    );
+  }
+
+  @Get('tenant/:chatId/:messageId/media')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantChatMedia(
+    @Param('sessionId') sessionId: string,
+    @Param('chatId') chatId: string,
+    @Param('messageId') messageId: string,
+    @CurrentTenant() tenantId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    await this.assertTenantSession(sessionId, tenantId);
+    const { buffer, mimetype } = await this.messageService.getChatMedia(sessionId, chatId, messageId);
+    res.set({
+      'Content-Type': mimetype,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'attachment',
+    });
+    return new StreamableFile(buffer);
+  }
+
   @ChatScoped('fenced')
   @Get(':chatId/history')
   @ApiOperation({
