@@ -49,6 +49,14 @@ import {
   MEDIA_URL_PROXY_503,
   SESSION_NOT_STARTED_400,
 } from '../../common/openapi/engine-status-responses';
+import { UseGuards } from '@nestjs/common';
+import { Public } from '../auth/decorators/auth.decorators';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
+import { SessionService } from '../session/session.service';
 
 // Every Baileys group call maps WhatsApp's own rate-limit and server-timeout answers to 503 as well,
 // so each 503 below ends with this sentence; a throttled caller should back off, not retry at once.
@@ -111,7 +119,117 @@ function assertActionBodyRead(req: Request): void {
 @ApiTags('groups')
 @Controller('sessions/:sessionId/groups')
 export class GroupController {
-  constructor(private readonly groupService: GroupService) {}
+  constructor(
+    private readonly groupService: GroupService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private async assertTenantSession(sessionId: string, tenantId: string): Promise<void> {
+    await this.sessionService.findOne(sessionId, tenantId);
+  }
+
+  @Get('tenant/:groupId')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantGroup(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.groupService.getGroupInfo(sessionId, groupId);
+  }
+
+  @Post('tenant')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async createTenantGroup(@Param('sessionId') sessionId: string, @CurrentTenant() tenantId: string, @Body() dto: CreateGroupDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.groupService.createGroup(sessionId, dto.name, dto.participants);
+  }
+
+  @Put('tenant/:groupId/subject')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async setTenantSubject(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: GroupSubjectDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.groupService.setGroupSubject(sessionId, groupId, dto.subject);
+    return { success: true, message: 'Group subject updated' };
+  }
+
+  @Put('tenant/:groupId/description')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async setTenantDescription(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: GroupDescriptionDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.groupService.setGroupDescription(sessionId, groupId, dto.description);
+    return { success: true, message: 'Group description updated' };
+  }
+
+  @Put('tenant/:groupId/picture')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async setTenantPicture(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: SetGroupPictureDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.groupService.setGroupPicture(sessionId, groupId, dto);
+    return { success: true, message: 'Group picture updated' };
+  }
+
+  @Post('tenant/:groupId/participants')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async addTenantParticipants(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: ParticipantsDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const results = await this.groupService.addParticipants(sessionId, groupId, dto.participants);
+    return { success: true, message: 'Participants added', results };
+  }
+
+  @Delete('tenant/:groupId/participants')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async removeTenantParticipants(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: ParticipantsDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const results = await this.groupService.removeParticipants(sessionId, groupId, dto.participants);
+    return { success: true, message: 'Participants removed', results };
+  }
+
+  @Post('tenant/:groupId/participants/promote')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async promoteTenantParticipants(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: ParticipantsDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const results = await this.groupService.promoteParticipants(sessionId, groupId, dto.participants);
+    return { success: true, message: 'Participants promoted to admin', results };
+  }
+
+  @Post('tenant/:groupId/participants/demote')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async demoteTenantParticipants(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string, @Body() dto: ParticipantsDto) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const results = await this.groupService.demoteParticipants(sessionId, groupId, dto.participants);
+    return { success: true, message: 'Participants demoted from admin', results };
+  }
+
+  @Post('tenant/:groupId/leave')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async leaveTenantGroup(@Param('sessionId') sessionId: string, @Param('groupId') groupId: string, @CurrentTenant() tenantId: string) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.groupService.leaveGroup(sessionId, groupId);
+    return { success: true, message: 'Left the group' };
+  }
 
   // MUST stay above @Get(':groupId'): Nest matches in declaration order, and a literal segment
   // declared after a parameter route is shadowed by it — `join-info` would arrive as a group id.
