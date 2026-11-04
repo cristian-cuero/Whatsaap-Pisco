@@ -259,6 +259,113 @@ export class SessionController {
 
     return paginate(chats, limit ? parseInt(limit, 10) : undefined, skip);
   }
+  // Operaciones de chat para el dashboard autenticado con JWT.
+  // Todas validan primero que la sesión pertenezca al tenant del token.
+  @Post('tenant/:sessionId/chats/read')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async markTenantChatRead(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: MarkChatReadDto,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    const success = await this.sessionService.sendSeen(id, dto.chatId, dto.messageIds);
+    return { success };
+  }
+
+  @Post('tenant/:sessionId/chats/unread')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async markTenantChatUnread(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: MarkChatUnreadDto,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    const success = await this.sessionService.markUnread(id, dto.chatId);
+    return { success };
+  }
+
+  @Delete('tenant/:sessionId/chats/:chatId/messages')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async clearTenantChatMessages(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @Param('chatId') chatId: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    const success = await this.sessionService.clearChatMessages(id, chatId);
+    return { success };
+  }
+
+  @Post('tenant/:sessionId/chats/archive')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async archiveTenantChat(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: ArchiveChatDto,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    const success = await this.sessionService.archiveChat(id, dto.chatId, dto.archive);
+    return { success };
+  }
+
+  @Post('tenant/:sessionId/chats/mute')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async muteTenantChat(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: MuteChatDto,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    await this.sessionService.muteChat(id, dto.chatId, dto.muteUntil);
+    return { success: true };
+  }
+
+  @Post('tenant/:sessionId/chats/pin')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async pinTenantChat(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: PinChatDto,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    const success = await this.sessionService.pinChat(id, dto.chatId, dto.pin);
+    return { success };
+  }
+
+  @Post('tenant/:sessionId/chats/delete')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async deleteTenantChat(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: DeleteChatDto,
+  ): Promise<{ success: boolean }> {
+    await this.sessionService.findOne(id, tenantId);
+    const success = await this.sessionService.deleteChat(id, dto.chatId);
+    return { success };
+  }
+
   // Encontramos La Session Por El Tenant Y El ID
   @Get('tenant/:sessionId')
   @Public()
