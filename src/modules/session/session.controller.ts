@@ -138,6 +138,9 @@ export class SessionController {
     @Body() dto: CreateSessionDto,
     @CurrentTenant() tenantId: string,
   ): Promise<SessionResponseDto> {
+    if (dto.proxyUrl) {
+      throw new ForbiddenException('Configurar proxy requiere autorización ADMIN');
+    }
     // El tenant se obtiene del JWT, nunca del body.
     const session = await this.sessionService.create(dto, tenantId);
     await this.auditService.logInfo(AuditAction.SESSION_CREATED, {

@@ -67,7 +67,12 @@ export function useSessionCreateForm({ onCreated, onFailed }: UseSessionCreateFo
     const submittedAt = draftEdits.current;
     try {
       setCreating(true);
-      const newSession = await sessionApi.create(
+      // const newSession = await sessionApi.create(
+      //   newSessionName,
+      //   useProxy && proxyUrl.trim() ? { proxyUrl: proxyUrl.trim() } : undefined,
+      // );
+      //  estamos usando el endpoint de createForTenant para crear la session con el tenantId del JWT
+      const newSession = await sessionApi.createForTenant(
         newSessionName,
         useProxy && proxyUrl.trim() ? { proxyUrl: proxyUrl.trim() } : undefined,
       );
