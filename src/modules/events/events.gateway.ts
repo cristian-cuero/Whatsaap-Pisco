@@ -763,6 +763,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       return this.createError('INVALID_SESSION', 'sessionId must be "*" or a session id', requestId);
     }
 
+    // Human JWT subscriptions are restricted to sessions owned by the verified tenant.
+    const humanPayload = (client.data as { humanJwtPayload?: HumanJwtPayload }).humanJwtPayload;
+    if (humanPayload) {
+      return this.handleHumanSubscribe(client, message, humanPayload);
+    }
+
     // Re-validate the API key on every subscribe: a long-lived socket whose key was
     // revoked/expired after connect must not be able to keep opening new subscriptions.
     // The clientIp is re-resolved (trusted-proxy-aware) so an IP-restricted key is enforced
