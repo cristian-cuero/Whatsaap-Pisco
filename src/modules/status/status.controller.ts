@@ -75,6 +75,41 @@ export class StatusController {
     return new StreamableFile(buffer);
   }
 
+  // Publicación de estados para el dashboard autenticado con JWT.
+  // La sesión siempre se valida contra el tenant obtenido del token.
+  @Post('tenant/send-text')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async sendTenantTextStatus(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: SendTextStatusDto,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.statusService.postTextStatus(sessionId, dto.text, {
+      recipients: dto.recipients,
+      backgroundColor: dto.backgroundColor,
+      font: dto.font,
+    });
+  }
+
+  @Post('tenant/send-image')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async sendTenantImageStatus(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: SendImageStatusDto,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.statusService.postImageStatus(sessionId, dto.image, {
+      recipients: dto.recipients,
+      caption: dto.caption,
+    });
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all contact status updates' })
   @ApiResponse({
