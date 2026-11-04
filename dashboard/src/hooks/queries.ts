@@ -384,7 +384,7 @@ export function useTenantMessageStatsQuery() {
 export function useStatsMessagesQuery(period: StatsPeriod) {
   return useQuery({
     queryKey: queryKeys.statsMessages(period),
-    queryFn: () => statsApi.getMessages(period),
+    queryFn: () => statsApi.getMessagesForTenant(period),
     staleTime: 30_000,
     retry: false,
   });
