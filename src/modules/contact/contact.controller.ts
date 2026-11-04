@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Put, Delete, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ContactService } from './contact.service';
-import { ChatScoped, CurrentApiKey, RequireRole } from '../auth/decorators/auth.decorators';
+import { ChatScoped, CurrentApiKey, RequireRole, Public } from '../auth/decorators/auth.decorators';
 import { type ApiKey, ApiKeyRole } from '../auth/entities/api-key.entity';
 import { ChatScopeService } from '../auth/chat-scope.service';
 import { paginate } from '../../common/utils/paginate';
@@ -15,6 +15,14 @@ import {
   ResolvedPhoneResponseDto,
 } from './dto/contact-response.dto';
 import { ENGINE_NOT_READY_409 } from '../../common/openapi/engine-status-responses';
+import { UseGuards } from '@nestjs/common';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
+import { SessionService } from '../session/session.service';
+
 
 @ApiTags('contacts')
 @Controller('sessions/:sessionId/contacts')
@@ -22,7 +30,144 @@ export class ContactController {
   constructor(
     private readonly contactService: ContactService,
     private readonly chatScope: ChatScopeService,
+    private readonly sessionService: SessionService,
   ) {}
+
+  // Contactos disponibles para el dashboard autenticado mediante JWT.
+  // La sesión se valida contra el tenant del token antes de acceder al motor de WhatsApp.
+  private async assertTenantSession(sessionId: string, tenantId: string): Promise<void> {
+    await this.sessionService.findOne(sessionId, tenantId);
+  }
+
+  @Get('tenant')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async findTenantContacts(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const skip = offset ? parseInt(offset, 10) : undefined;
+    return paginate(
+      await this.contactService.listContacts(sessionId, skip),
+      limit ? parseInt(limit, 10) : undefined,
+      skip,
+    );
+  }
+
+  @Get('tenant/blocked')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantBlockedContacts(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.contactService.getBlockedContacts(sessionId);
+  }
+
+  @Get('tenant/profile-pictures')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantProfilePictures(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Query('ids') ids?: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const list = (ids ?? '').split(',').map(value => value.trim()).filter(Boolean);
+    return { pictures: await this.contactService.getProfilePictures(sessionId, list) };
+  }
+
+  @Get('tenant/check/:number')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async checkTenantNumber(
+    @Param('sessionId') sessionId: string,
+    @Param('number') number: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const whatsappId = await this.contactService.getNumberId(sessionId, number);
+    return { number, exists: whatsappId !== null, whatsappId };
+  }
+
+  @Get('tenant/:contactId/profile-picture')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantProfilePicture(
+    @Param('sessionId') sessionId: string,
+    @Param('contactId') contactId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return { url: await this.contactService.getProfilePicture(sessionId, contactId) };
+  }
+
+  @Get('tenant/:contactId/phone')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async resolveTenantPhone(
+    @Param('sessionId') sessionId: string,
+    @Param('contactId') contactId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return { contactId, phone: await this.contactService.resolveContactPhone(sessionId, contactId) };
+  }
+
+  @Put('tenant/:contactId')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async upsertTenantContact(
+    @Param('sessionId') sessionId: string,
+    @Param('contactId') contactId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: UpsertContactDto,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.contactService.upsertContact(sessionId, contactId, dto.firstName, dto.lastName);
+    return { success: true, message: 'Contact saved' };
+  }
+
+  @Post('tenant/:contactId/block')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async blockTenantContact(
+    @Param('sessionId') sessionId: string,
+    @Param('contactId') contactId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.contactService.blockContact(sessionId, contactId);
+    return { success: true, message: 'Contact blocked' };
+  }
+
+  @Delete('tenant/:contactId/block')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async unblockTenantContact(
+    @Param('sessionId') sessionId: string,
+    @Param('contactId') contactId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.contactService.unblockContact(sessionId, contactId);
+    return { success: true, message: 'Contact unblocked' };
+  }
 
   @ChatScoped('filtered')
   @Get()

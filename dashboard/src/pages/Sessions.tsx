@@ -389,7 +389,7 @@ export function Sessions() {
     setDeletingId(id);
     const session = sessions.find(s => s.id === id);
     try {
-      await sessionApi.delete(id);
+      await sessionApi.deleteForTenant(id);
       // Functional removal (no stale `sessions` capture), then invalidate the prefix.
       rowWrites.current += 1;
       updateSessions(current => current.filter(s => s.id !== id));
@@ -596,7 +596,7 @@ export function Sessions() {
 
   const handleStop = async (id: string) => {
     try {
-      const updated = await sessionApi.stop(id);
+      const updated = await sessionApi.stopForTenant(id);
       await applySessionResponse(updated);
     } catch (err) {
       console.error('Failed to stop:', err);
@@ -638,7 +638,7 @@ export function Sessions() {
     if (unlinkingId) return;
     setUnlinkingId(id);
     try {
-      const updated = await sessionApi.logout(id);
+      const updated = await sessionApi.logoutForTenant(id);
       await applySessionResponse(updated);
       toast.success(t('sessions.unlink.successTitle'), t('sessions.unlink.success'));
     } catch (err) {

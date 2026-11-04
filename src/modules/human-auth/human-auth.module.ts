@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -11,14 +10,12 @@ import { User } from '../user/entities/user.entity';
 import { Tenant } from '../tenant/entities/tenant.entity';
 import { TenantUser } from '../tenant/entities/tenant-user.entity';
 import { HumanJwtGuard } from './guards/human-jwt.guard';
+import { TenantRolesGuard } from './guards/tenant-roles.guard';
 
 @Module({
   imports: [
     // Conectamos las entidades con la conexión PostgreSQL "data".
-    TypeOrmModule.forFeature(
-      [User, Tenant, TenantUser],
-      'data',
-    ),
+    TypeOrmModule.forFeature([User, Tenant, TenantUser], 'data'),
 
     // Configuramos JWT utilizando el secreto del archivo .env.
     JwtModule.registerAsync({
@@ -32,11 +29,11 @@ import { HumanJwtGuard } from './guards/human-jwt.guard';
     }),
   ],
 
-  // creando las depencidas con los contraladores Y Lo Servicios 
+  // creando las depencidas con los contraladores Y Lo Servicios
   controllers: [HumanAuthController],
 
-  providers: [HumanAuthService, HumanJwtGuard],
+  providers: [HumanAuthService, HumanJwtGuard, TenantRolesGuard],
 
-  exports: [HumanAuthService, JwtModule, HumanJwtGuard],
+  exports: [HumanAuthService, JwtModule, HumanJwtGuard, TenantRolesGuard],
 })
 export class HumanAuthModule {}

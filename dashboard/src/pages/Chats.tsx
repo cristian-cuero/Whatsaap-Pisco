@@ -433,7 +433,7 @@ export function Chats() {
     const request = ++reads.sent;
     let list: Session[];
     try {
-      list = await sessionApi.list();
+      list = await sessionApi.listForTenant();
     } catch (err) {
       if (request < reads.applied) return reads.list;
       throw err;

@@ -15,6 +15,14 @@ import {
   ENGINE_NOT_READY_409,
   ENGINE_REFUSED_403,
 } from '../../common/openapi/engine-status-responses';
+import { UseGuards } from '@nestjs/common';
+import { SessionService } from '../session/session.service';
+import { Public } from '../auth/decorators/auth.decorators';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
 
 /** Delete, mute and unsubscribe refuse a non-channel id up front, before any channel lookup. */
 const CHANNEL_ID_INVALID_404 =
@@ -29,7 +37,38 @@ const THROTTLED_503 =
 @ApiTags('channels')
 @Controller('sessions/:sessionId/channels')
 export class ChannelController {
-  constructor(private readonly channelService: ChannelService) {}
+  constructor(
+    private readonly channelService: ChannelService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private async assertTenantSession(sessionId: string, tenantId: string): Promise<void> {
+    await this.sessionService.findOne(sessionId, tenantId);
+  }
+
+  @Get('tenant')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantChannels(@Param('sessionId') sessionId: string, @CurrentTenant() tenantId: string) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.channelService.getSubscribedChannels(sessionId);
+  }
+
+  @Get('tenant/:channelId/messages')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantChannelMessages(
+    @Param('sessionId') sessionId: string,
+    @Param('channelId') channelId: string,
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const parsed = limit !== undefined ? parseInt(limit, 10) : NaN;
+    return this.channelService.getChannelMessages(sessionId, channelId, Number.isNaN(parsed) ? undefined : parsed);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all subscribed channels/newsletters' })

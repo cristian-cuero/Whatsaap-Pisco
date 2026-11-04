@@ -243,6 +243,194 @@ export class MessageController {
     });
   }
 
+  private async assertTenantSession(sessionId: string, tenantId: string): Promise<void> {
+    await this.sessionService.findOne(sessionId, tenantId);
+  }
+
+  // Envíos del dashboard mediante JWT. Se reutilizan los mismos DTO y MessageService.
+  @Post('tenant/send-text')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantText(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendTextMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendText(sessionId, dto);
+  }
+
+  @Post('tenant/send-image')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantImage(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendMediaMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendImage(sessionId, dto);
+  }
+
+  @Post('tenant/send-video')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantVideo(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendMediaMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendVideo(sessionId, dto);
+  }
+
+  @Post('tenant/send-audio')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantAudio(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendAudioMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendAudio(sessionId, dto);
+  }
+
+  @Post('tenant/send-document')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantDocument(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendMediaMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendDocument(sessionId, dto);
+  }
+
+  @Post('tenant/send-location')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantLocation(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendLocationDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendLocation(sessionId, dto);
+  }
+
+  @Post('tenant/send-contact')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantContact(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendContactDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendContact(sessionId, dto);
+  }
+
+  @Post('tenant/send-sticker')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantSticker(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendMediaMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendSticker(sessionId, dto);
+  }
+
+  @Post('tenant/send-poll')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async sendTenantPoll(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: SendPollDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.sendPoll(sessionId, dto);
+  }
+
+  @Post('tenant/reply')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @IdempotentSend()
+  async replyTenantMessage(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: ReplyMessageDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.reply(sessionId, dto);
+  }
+
+  @Post('tenant/click-button')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async clickTenantButton(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: ClickButtonDto,
+  ): Promise<MessageResponseDto> {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.messageService.clickButton(sessionId, dto);
+  }
+
+  @Post('tenant/react')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async reactTenantMessage(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: ReactMessageDto,
+  ): Promise<{ success: boolean }> {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.messageService.reactToMessage(sessionId, dto);
+    return { success: true };
+  }
+
+  @Post('tenant/delete')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async deleteTenantMessage(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Body() dto: DeleteMessageDto,
+  ): Promise<{ success: boolean }> {
+    await this.assertTenantSession(sessionId, tenantId);
+    await this.messageService.deleteMessage(sessionId, dto);
+    return { success: true };
+  }
+
   @ChatScoped('fenced')
   @Post('send-text')
   @IdempotentSend()
@@ -676,6 +864,54 @@ export class MessageController {
       status: batch.status,
       progress: batch.progress,
     };
+  }
+
+  @Get('tenant/:chatId/history')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantChatHistory(
+    @Param('sessionId') sessionId: string,
+    @Param('chatId') chatId: string,
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+    @Query('includeMedia') includeMedia?: string,
+    @Query('deep') deep?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    const abort = new AbortController();
+    res?.on('close', () => abort.abort());
+    return this.messageService.getChatHistory(
+      sessionId,
+      chatId,
+      parsedLimit !== undefined && !Number.isNaN(parsedLimit) ? parsedLimit : undefined,
+      includeMedia === 'true' || includeMedia === '1',
+      deep === 'true' || deep === '1',
+      abort.signal,
+    );
+  }
+
+  @Get('tenant/:chatId/:messageId/media')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantChatMedia(
+    @Param('sessionId') sessionId: string,
+    @Param('chatId') chatId: string,
+    @Param('messageId') messageId: string,
+    @CurrentTenant() tenantId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    await this.assertTenantSession(sessionId, tenantId);
+    const { buffer, mimetype } = await this.messageService.getChatMedia(sessionId, chatId, messageId);
+    res.set({
+      'Content-Type': mimetype,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'attachment',
+    });
+    return new StreamableFile(buffer);
   }
 
   @ChatScoped('fenced')

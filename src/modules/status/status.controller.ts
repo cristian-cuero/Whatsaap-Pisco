@@ -1,4 +1,3 @@
-import { Controller, Get, Post, Delete, Param, Body, Res, StreamableFile } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { StatusDeletedResponseDto, StatusListResponseDto, StatusResultDto } from './dto/status-response.dto';
@@ -14,11 +13,102 @@ import {
   SESSION_NOT_STARTED_404,
   STATUS_POST_503,
 } from '../../common/openapi/engine-status-responses';
-
+import { Controller, Get, Post, Delete, Param, Body, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { SessionService } from '../session/session.service';
+import { Public } from '../auth/decorators/auth.decorators';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
 @ApiTags('status')
 @Controller('sessions/:sessionId/status')
 export class StatusController {
-  constructor(private readonly statusService: StatusService) {}
+  constructor(
+    private readonly statusService: StatusService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private async assertTenantSession(sessionId: string, tenantId: string): Promise<void> {
+    await this.sessionService.findOne(sessionId, tenantId);
+  }
+
+  @Get('tenant')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantStatuses(@Param('sessionId') sessionId: string, @CurrentTenant() tenantId: string) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return { statuses: await this.statusService.getStatuses(sessionId) };
+  }
+
+  @Get('tenant/:id')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantContactStatus(
+    @Param('sessionId') sessionId: string,
+    @Param('id') contactId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return { statuses: await this.statusService.getContactStatus(sessionId, contactId) };
+  }
+
+  @Get('tenant/:statusId/media')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantStatusMedia(
+    @Param('sessionId') sessionId: string,
+    @Param('statusId') statusId: string,
+    @CurrentTenant() tenantId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    await this.assertTenantSession(sessionId, tenantId);
+    const { buffer, mimetype } = await this.statusService.getStatusMedia(sessionId, statusId);
+    res.set({
+      'Content-Type': mimetype,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'attachment',
+    });
+    return new StreamableFile(buffer);
+  }
+
+  // Publicación de estados para el dashboard autenticado con JWT.
+  // La sesión siempre se valida contra el tenant obtenido del token.
+  @Post('tenant/send-text')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async sendTenantTextStatus(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: SendTextStatusDto,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.statusService.postTextStatus(sessionId, dto.text, {
+      recipients: dto.recipients,
+      backgroundColor: dto.backgroundColor,
+      font: dto.font,
+    });
+  }
+
+  @Post('tenant/send-image')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async sendTenantImageStatus(
+    @Param('sessionId') sessionId: string,
+    @Body() dto: SendImageStatusDto,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return this.statusService.postImageStatus(sessionId, dto.image, {
+      recipients: dto.recipients,
+      caption: dto.caption,
+    });
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all contact status updates' })
