@@ -37,6 +37,15 @@ export class StatsController {
     return this.statsService.getTenantOverview(tenantId);
   }
 
+  // Detailed analytics scoped to the authenticated tenant; never uses global API-key aggregates.
+  @Get('tenant/messages')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  @ApiOperation({ summary: 'Get message analytics for the authenticated tenant' })
+  async getTenantMessageStats(@CurrentTenant() tenantId: string, @Query() query: StatsQueryDto) {
+    return this.statsService.getTenantMessageStats(tenantId, query.period || '24h');
+  }
+
   @Get('messages')
   @RequireRole(ApiKeyRole.ADMIN)
   @RequireUnscopedKey()
