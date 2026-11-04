@@ -163,11 +163,13 @@ export function useWebSocket(events: WebSocketEvents = {}) {
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return;
 
-    // Get API key from sessionStorage (same as api.ts)
-    const apiKey = sessionStorage.getItem('openwa_api_key');
+    // Human dashboard uses JWT; legacy integrations continue using API Keys.
+    // Prioritize JWT so an old API Key in this tab cannot replace the tenant identity.
+    const token = sessionStorage.getItem('openwa_access_token');
+    const apiKey = token ? null : sessionStorage.getItem('openwa_api_key');
 
-    if (!apiKey) {
-      console.warn('[WebSocket] No API key found, skipping connection');
+    if (!token && !apiKey) {
+      console.warn('[WebSocket] No human JWT or API key found, skipping connection');
       return;
     }
 
@@ -177,14 +179,9 @@ export function useWebSocket(events: WebSocketEvents = {}) {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      // Send the key via `auth` (and a header for proxies). NOT via `query` — a key in the
-      // handshake URL leaks into access logs / Referer. The gateway reads auth first.
-      auth: {
-        apiKey,
-      },
-      extraHeaders: {
-        'X-API-Key': apiKey,
-      },
+      // Credentials are sent in the Socket.IO auth payload, never in the URL.
+      auth: token ? { token } : { apiKey: apiKey! },
+      ...(apiKey ? { extraHeaders: { 'X-API-Key': apiKey } } : {}),
     });
 
     socketRef.current.on('connect', () => {
