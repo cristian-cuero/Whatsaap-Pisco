@@ -39,11 +39,11 @@ export const queryKeys = {
 };
 
 // ── Session Queries ───────────────────────────────────────────────────
-
+// busca las sesiones del usuario y las devuelve en un array de objetos Session. Cada objeto Session contiene información sobre la sesión, como su id, nombre, estado, fecha de creación y fecha de actualización. La función useSessionsQuery utiliza el hook useQuery de React Query para realizar la solicitud al endpoint /sessions/tenant y almacenar los datos en caché durante 30 segundos.
 export function useSessionsQuery() {
   return useQuery({
     queryKey: queryKeys.sessions,
-    queryFn: sessionApi.list,
+    queryFn: sessionApi.listForTenant,
     staleTime: 30_000,
   });
 }
