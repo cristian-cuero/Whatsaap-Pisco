@@ -1850,5 +1850,11 @@ export const statsApi = {
 
     return humanAuthRequest<TenantMessageOverview>('/stats/tenant/overview', {}, token);
   },
+  // Detailed message analytics for the authenticated tenant; uses the human JWT, not a legacy API key.
+  getMessagesForTenant: (period: StatsPeriod) => {
+    const token = sessionStorage.getItem('openwa_access_token');
+    if (!token) throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    return humanAuthRequest<MessageStats>(`/stats/tenant/messages?period=${period}`, {}, token);
+  },
   getMessages: (period: StatsPeriod) => request<MessageStats>(`/stats/messages?period=${period}`),
 };
