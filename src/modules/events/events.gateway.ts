@@ -646,6 +646,103 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
   }
 
+  private async handleHumanSubscribe(
+    client: Socket,
+    message: WSSubscribeRequest,
+    payload: HumanJwtPayload,
+  ): Promise<WSSubscribedResponse | WSErrorResponse> {
+    const { sessionId, events, requestId } = message;
+
+    // Los usuarios humanos nunca pueden suscribirse a todas las empresas.
+    if (sessionId === '*') {
+      return this.createError('FORBIDDEN_SESSION', 'Human users cannot subscribe to all sessions', requestId);
+    }
+
+    if (!this.sessionRepository || !this.jwtService) {
+      return this.createError('INTERNAL_ERROR', 'WebSocket authorization services unavailable', requestId);
+    }
+
+    // Volvemos a verificar el JWT para comprobar que no haya expirado.
+    const token = (client.data as { humanJwtToken?: string }).humanJwtToken;
+
+    if (!token) {
+      return this.createError('UNAUTHORIZED', 'Human JWT is missing', requestId);
+    }
+
+    try {
+      const verified = await this.jwtService.verifyAsync<HumanJwtPayload>(token);
+
+      if (verified.sub !== payload.sub || verified.tenantId !== payload.tenantId || verified.role !== payload.role) {
+        return this.createError('UNAUTHORIZED', 'Human JWT is no longer valid', requestId);
+      }
+    } catch {
+      client.emit('message', this.createError('UNAUTHORIZED', 'Human JWT expired or invalid', requestId));
+      client.disconnect();
+      return this.createError('UNAUTHORIZED', 'Human JWT expired or invalid', requestId);
+    }
+
+    // Comprobación real de pertenencia: nunca confiamos en el tenant enviado por el frontend.
+    const session = await this.sessionRepository.findOne({
+      where: {
+        id: sessionId,
+        tenantId: payload.tenantId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!session) {
+      return this.createError('FORBIDDEN_SESSION', 'You are not authorized to access this session', requestId);
+    }
+
+    if (!events || !Array.isArray(events) || events.length === 0) {
+      return this.createError('INVALID_EVENTS', 'events array is required', requestId);
+    }
+
+    const validEvents = [
+      ...new Set(
+        events.filter(
+          event => event === '*' || SUBSCRIBABLE_EVENTS.includes(event as (typeof SUBSCRIBABLE_EVENTS)[number]),
+        ),
+      ),
+    ];
+
+    if (validEvents.length === 0) {
+      return this.createError(
+        'INVALID_EVENTS',
+        `No valid events. Valid: ${SUBSCRIBABLE_EVENTS.join(', ')}, *`,
+        requestId,
+      );
+    }
+
+    // El acceso al QR se determina por el rol humano verificado.
+    this.syncQrAccess(client, payload.role);
+
+    const rooms = validEvents.map(event => buildRoomName(sessionId, event));
+
+    const held = [...client.rooms].filter(room => room.startsWith('session:')).length;
+    const newRooms = rooms.filter(room => !client.rooms.has(room)).length;
+
+    if (held + newRooms > MAX_ROOMS_PER_SOCKET) {
+      return this.createError('TOO_MANY_SUBSCRIPTIONS', TOO_MANY_SUBSCRIPTIONS_MESSAGE, requestId);
+    }
+
+    for (const room of rooms) {
+      void client.join(room);
+    }
+
+    this.logger.debug(`Human user ${payload.sub} subscribed to session ${sessionId}`);
+
+    return {
+      type: 'subscribed',
+      sessionId,
+      events: validEvents,
+      requestId,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   private async handleSubscribe(
     client: Socket,
     message: WSSubscribeRequest,
