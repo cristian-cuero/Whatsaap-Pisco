@@ -64,6 +64,7 @@
     "dashboard": "Panel",
     "sessions": "Sesiones",
     "chats": "Chats",
+    "analytics": "Analíticas",
     "numberChecker": "Verificador de números",
     "webhooks": "Webhooks",
     "apiKeys": "Claves API",
