@@ -39,18 +39,40 @@ const queryClient = new QueryClient({
   },
 });
 
+// function mapBackendRole(role: string): 'admin' | 'operator' | 'viewer' {
+//   switch (role) {
+//     case 'OWNER':
+//     case 'ADMIN':
+//       return 'admin';
+//     case 'MEMBER':
+//       return 'operator';
+//     case 'VIEWER':
+//     default:
+//       return 'viewer';
+//   }
+// }
+
+// nuevos roles de JWT
+//Rol nuevo (backend)	Rol interno (frontend)	Permisos
+// owner	admin	Administración
+// admin	admin	Administración
+// agent	operator	Operaciones
+// Desconocido	viewer	Solo lectura
 function mapBackendRole(role: string): 'admin' | 'operator' | 'viewer' {
-  switch (role) {
-    case 'OWNER':
-    case 'ADMIN':
+  switch (role.toLowerCase()) {
+    case 'owner':
+    case 'admin':
       return 'admin';
-    case 'MEMBER':
+
+    case 'agent':
       return 'operator';
-    case 'VIEWER':
+
     default:
       return 'viewer';
   }
 }
+
+// 
 //viejo
 // function AppContent() {
 //   // Capture the key ONCE at mount. Read live per render, the null→key transition when
