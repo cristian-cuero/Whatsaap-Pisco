@@ -365,10 +365,19 @@ export function useCurrentEngineQuery() {
 export function useStatsOverviewQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.statsOverview,
-    queryFn: statsApi.getOverviewForTenant,
+    queryFn: statsApi.getOverview,
     staleTime: 30_000,
     retry: false,
     enabled,
+  });
+}
+// Estadísticas de mensajes de la empresa autenticada mediante JWT.
+export function useTenantMessageStatsQuery() {
+  return useQuery({
+    queryKey: ['stats', 'tenant', 'overview'],
+    queryFn: statsApi.getOverviewForTenant,
+    staleTime: 30_000,
+    retry: false,
   });
 }
 
