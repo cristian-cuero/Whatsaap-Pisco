@@ -138,7 +138,13 @@ export function isSessionSubscriptionAllowed(allowedSessions: string[] | null | 
 export const QR_DENIED_ROOM = 'role:qr-denied';
 
 /** Roles allowed to receive `session.qr`. Anything else, including an unknown role, is denied. */
-const QR_ALLOWED_ROLES: ReadonlySet<string> = new Set([ApiKeyRole.OPERATOR, ApiKeyRole.ADMIN]);
+const QR_ALLOWED_ROLES: ReadonlySet<string> = new Set([
+  ApiKeyRole.OPERATOR,
+  ApiKeyRole.ADMIN,
+  TenantRole.OWNER,
+  TenantRole.ADMIN,
+  TenantRole.AGENT,
+]);
 
 /**
  * Subscription rooms live until the socket disconnects, so their names and count are bounded: a session
@@ -901,7 +907,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   }
 
   /** Put the socket in or out of the QR-denied room for its key's current role. */
-  private syncQrAccess(client: Socket, role: ApiKeyRole | undefined): void {
+  private syncQrAccess(client: Socket, role: string | undefined): void {
     if (role && QR_ALLOWED_ROLES.has(role)) {
       void client.leave(QR_DENIED_ROOM);
     } else {
