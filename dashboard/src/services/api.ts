@@ -48,11 +48,7 @@ export interface HumanMeResponse {
   };
 }
 
-async function humanAuthRequest<T>(
-  endpoint: string,
-  options: RequestInit = {},
-  token?: string,
-): Promise<T> {
+async function humanAuthRequest<T>(endpoint: string, options: RequestInit = {}, token?: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
@@ -66,9 +62,7 @@ async function humanAuthRequest<T>(
 
   if (!response.ok) {
     throw new Error(
-      typeof data.message === 'string'
-        ? data.message
-        : `Error de autenticación: HTTP ${response.status}`,
+      typeof data.message === 'string' ? data.message : `Error de autenticación: HTTP ${response.status}`,
     );
   }
 
@@ -82,8 +76,7 @@ export const humanAuthApi = {
       body: JSON.stringify({ email, password }),
     }),
 
-  me: (token: string) =>
-    humanAuthRequest<HumanMeResponse>('/auth/me', {}, token),
+  me: (token: string) => humanAuthRequest<HumanMeResponse>('/auth/me', {}, token),
 };
 
 // Warn (not refuse — would break dev + TLS-terminating-proxy) when the API origin is an
@@ -963,8 +956,20 @@ async function requestBlob(endpoint: string, signal?: AbortSignal): Promise<Blob
 // Session API
 // =============================================================================
 
+//lista Las Sessiones
 export const sessionApi = {
   list: () => request<Session[]>('/sessions'),
+
+  // Listado de sesiones del tenant autenticado mediante JWT.
+  listForTenant: () => {
+    const token = sessionStorage.getItem('openwa_access_token');
+
+    if (!token) {
+      throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    }
+
+    return humanAuthRequest<Session[]>('/sessions/tenant', {}, token);
+  },
   get: (id: string) => request<Session>(`/sessions/${id}`),
   create: (name: string, options?: CreateSessionOptions) =>
     request<Session>('/sessions', {
