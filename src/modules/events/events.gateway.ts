@@ -35,6 +35,15 @@ import {
   type WsRateLimitConfig,
 } from './ws-rate-limit';
 
+import { InjectRepository } from '@nestjs/typeorm';
+import { Optional } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Repository } from 'typeorm';
+
+import { Session } from '../session/entities/session.entity';
+import { HumanJwtPayload } from '../human-auth/guards/human-jwt.guard';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+
 /**
  * WebSocket CORS origin: reuse the HTTP CORS policy instead of a hardcoded '*'.
  * Dev → allow any origin; production → the configured CORS_ORIGINS allowlist (or none).
@@ -218,6 +227,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
     private readonly chatScope: ChatScopeService = new ChatScopeService(),
+
+    @Optional()
+    private readonly jwtService?: JwtService,
+
+    @Optional()
+    @InjectRepository(Session, 'data')
+    private readonly sessionRepository?: Repository<Session>,
   ) {
     this.rateLimits = readWsRateLimitConfig();
     this.frameLimiter = new TokenBucketLimiter(this.rateLimits.framePerSecond, this.rateLimits.frameBurst);
