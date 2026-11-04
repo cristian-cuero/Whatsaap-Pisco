@@ -973,6 +973,49 @@ export const sessionApi = {
   get: (id: string) => request<Session>(`/sessions/${id}`),
   // crear Un tenat COn JWT, el tenant es el que crea la session, no el usuario. El usuario solo puede ver las sesiones de su tenant.
   // Crear una sesión para la empresa autenticada mediante JWT.
+
+  // consultar la session del tenant autenticado mediante JWT.
+    // Consultar una sesión perteneciente al tenant autenticado mediante JWT.
+  getForTenant: (id: string) => {
+    const token = sessionStorage.getItem('openwa_access_token');
+
+    if (!token) {
+      throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    }
+
+    return humanAuthRequest<Session>(`/sessions/tenant/${id}`, {}, token);
+  },
+
+  // Iniciar una sesión del tenant mediante JWT.
+  startForTenant: (id: string) => {
+    const token = sessionStorage.getItem('openwa_access_token');
+
+    if (!token) {
+      throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    }
+
+    return humanAuthRequest<Session>(
+      `/sessions/tenant/${id}/start`,
+      { method: 'POST' },
+      token,
+    );
+  },
+
+  // Obtener el QR de una sesión del tenant mediante JWT.
+  getQRForTenant: (id: string) => {
+    const token = sessionStorage.getItem('openwa_access_token');
+
+    if (!token) {
+      throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    }
+
+    return humanAuthRequest<{ qrCode: string; status: string }>(
+      `/sessions/tenant/${id}/qr`,
+      {},
+      token,
+    );
+  },
+
   createForTenant: (name: string, options?: CreateSessionOptions) => {
     const token = sessionStorage.getItem('openwa_access_token');
 
