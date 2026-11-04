@@ -1131,7 +1131,7 @@ export const sessionApi = {
       body: JSON.stringify({ participants }),
     }),
   removeGroupParticipants: (id: string, groupId: string, participants: string[]) =>
-    request<GroupParticipantsAck>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}/participants`, {
+    tenantAuthRequest<GroupParticipantsAck>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/participants`, {
       method: 'DELETE',
       body: JSON.stringify({ participants }),
     }),
@@ -1354,7 +1354,7 @@ export const contactApi = {
       method: 'POST',
     }),
   unblock: (sessionId: string, contactId: string) =>
-    request<{ success: boolean }>(`/sessions/${sessionId}/contacts/${encodeURIComponent(contactId)}/block`, {
+    tenantAuthRequest<{ success: boolean }>(`/sessions/${sessionId}/contacts/tenant/${encodeURIComponent(contactId)}/block`, {
       method: 'DELETE',
     }),
   /** Save the contact to the account's address book, or rename the entry it has. */
