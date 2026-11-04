@@ -441,6 +441,61 @@ export class SessionController {
     return qrCode;
   }
 
+  // Operaciones de ciclo de vida para sesiones del tenant autenticado.
+  // La propiedad se valida contra el tenant del JWT antes de ejecutar cualquier acción.
+  @Delete('tenant/:sessionId')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteTenantSession(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<void> {
+    const session = await this.sessionService.findOne(id, tenantId);
+    await this.sessionService.delete(id);
+    await this.auditService.logInfo(AuditAction.SESSION_DELETED, {
+      sessionId: id,
+      sessionName: session.name,
+    });
+  }
+
+  @Post('tenant/:sessionId/stop')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async stopTenantSession(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<SessionResponseDto> {
+    await this.sessionService.findOne(id, tenantId);
+    const session = await this.sessionService.stop(id);
+    await this.auditService.logInfo(AuditAction.SESSION_STOPPED, {
+      sessionId: session.id,
+      sessionName: session.name,
+    });
+    return this.transformSession(session);
+  }
+
+  @Post('tenant/:sessionId/logout')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @HttpCode(HttpStatus.OK)
+  async logoutTenantSession(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+  ): Promise<SessionResponseDto> {
+    await this.sessionService.findOne(id, tenantId);
+    const session = await this.sessionService.logout(id);
+    await this.auditService.logInfo(AuditAction.SESSION_LOGGED_OUT, {
+      sessionId: session.id,
+      sessionName: session.name,
+    });
+    return this.transformSession(session);
+  }
+
   @ChatScoped('agnostic')
   @Get(':sessionId')
   @ApiOperation({ summary: 'Get session by ID' })
