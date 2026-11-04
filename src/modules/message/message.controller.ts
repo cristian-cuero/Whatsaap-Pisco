@@ -46,7 +46,7 @@ import {
   ClickButtonDto,
   UnpinMessageDto,
 } from './dto/message-actions.dto';
-import { ChatQuotedAllowed, ChatScoped, CurrentApiKey, RequireRole } from '../auth/decorators/auth.decorators';
+import { ChatQuotedAllowed, ChatScoped, CurrentApiKey, Public, RequireRole } from '../auth/decorators/auth.decorators';
 import { type ApiKey, ApiKeyRole } from '../auth/entities/api-key.entity';
 import { ChatScopeService } from '../auth/chat-scope.service';
 import { parseMessageWindow } from './message-window';
@@ -64,6 +64,13 @@ import {
   SEND_503,
 } from '../../common/openapi/engine-status-responses';
 import { IdempotentSend } from './idempotency/idempotent-send.decorator';
+import { UseGuards } from '@nestjs/common';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
+import { SessionService } from '../session/session.service';
 
 // whatsapp-web.js drops these sends without an error, so its adapter refuses them up front
 // (ensureSendable in wwebjs-messaging.ts). The contract keeps one entry per status, so on a route
@@ -79,6 +86,7 @@ export class MessageController {
     private readonly messageService: MessageService,
     private readonly bulkMessageService: BulkMessageService,
     private readonly chatScope: ChatScopeService,
+    private readonly sessionService: SessionService,
   ) {}
 
   // Fenced on the optional ?chatId=: the guard checks it when present, and requireChat refuses a
@@ -194,6 +202,43 @@ export class MessageController {
       after: after?.trim() || undefined,
       // Opt-out, so anything but an explicit false keeps today's behaviour. Same string pair the
       // opt-in flags on this controller accept, read the other way round.
+      inlineMedia: inlineMedia !== 'false' && inlineMedia !== '0',
+    });
+  }
+
+  // Historial de mensajes para usuarios autenticados mediante JWT.
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @Get('tenant')
+  @ApiOperation({ summary: 'Get message history for a tenant session' })
+  async getTenantMessages(
+    @Param('sessionId') sessionId: string,
+    @CurrentTenant() tenantId: string,
+    @Query('chatId') chatId?: string,
+    @Query('from') from?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('after') after?: string,
+    @Query('inlineMedia') inlineMedia?: string,
+    @Query('since') since?: string,
+    @Query('until') until?: string,
+    @Query('direction') direction?: string,
+    @Query('orderBy') orderBy?: string,
+    @Query('type') type?: string,
+    @Query('messageId') messageId?: string,
+  ) {
+    // Verificamos que la sesión pertenezca al tenant autenticado.
+    await this.sessionService.findOne(sessionId, tenantId);
+
+    // Reutilizamos los filtros y la consulta original.
+    return this.messageService.getMessages(sessionId, {
+      ...parseMessageWindow({ since, until, direction, orderBy, type, messageId }),
+      chatId,
+      from,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+      after: after?.trim() || undefined,
       inlineMedia: inlineMedia !== 'false' && inlineMedia !== '0',
     });
   }
