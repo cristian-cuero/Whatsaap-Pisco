@@ -11,7 +11,19 @@ import { Message, MessageDirection, MessageStatus } from '../message/entities/me
  * misses the quoted "createdAt" column) — so it needs to_char() with a quoted column. The hour
  * format yields an identical zero-padded, chronologically-sortable label on both engines, so the
  * GROUP BY/ORDER BY on the alias and the downstream map() are unchanged.
+ *
+ * expo
  */
+export interface TenantMessageOverview {
+  sent: number;
+  received: number;
+  failed: number;
+  today: {
+    sent: number;
+    received: number;
+  };
+}
+
 export function timeSeriesTimestampSql(dbType: string, interval: 'hour' | 'day'): string {
   if (dbType === 'postgres') {
     const fmt = interval === 'hour' ? 'YYYY-MM-DD HH24:00:00' : 'YYYY-MM-DD';
@@ -156,6 +168,51 @@ export class StatsService {
 
   async getOverview(): Promise<OverviewStats> {
     return this.memoized('overview', () => this.loadOverview());
+  }
+
+  // Estadísticas de mensajes limitadas al tenant autenticado.
+  async getTenantOverview(tenantId: string): Promise<TenantMessageOverview> {
+    return this.memoized(`tenant-overview:${tenantId}`, async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      // Relacionamos cada mensaje con su sesión para identificar su empresa.
+      const messageStats = await this.messageRepo
+        .createQueryBuilder('m')
+        .innerJoin(Session, 's', 's.id = m.sessionId')
+        .select('m.direction', 'direction')
+        .addSelect('COUNT(*)', 'count')
+        .where('s.tenantId = :tenantId', { tenantId })
+        .groupBy('m.direction')
+        .getRawMany<{ direction: string; count: string }>();
+
+      const todayStats = await this.messageRepo
+        .createQueryBuilder('m')
+        .innerJoin(Session, 's', 's.id = m.sessionId')
+        .select('m.direction', 'direction')
+        .addSelect('COUNT(*)', 'count')
+        .where('s.tenantId = :tenantId', { tenantId })
+        .andWhere('m.createdAt >= :todayStart', { todayStart })
+        .groupBy('m.direction')
+        .getRawMany<{ direction: string; count: string }>();
+
+      const failed = await this.messageRepo
+        .createQueryBuilder('m')
+        .innerJoin(Session, 's', 's.id = m.sessionId')
+        .where('s.tenantId = :tenantId', { tenantId })
+        .andWhere('m.status = :status', { status: MessageStatus.FAILED })
+        .getCount();
+
+      return {
+        sent: parseInt(messageStats.find(m => m.direction === MessageDirection.OUTGOING)?.count || '0'),
+        received: parseInt(messageStats.find(m => m.direction === MessageDirection.INCOMING)?.count || '0'),
+        failed,
+        today: {
+          sent: parseInt(todayStats.find(m => m.direction === MessageDirection.OUTGOING)?.count || '0'),
+          received: parseInt(todayStats.find(m => m.direction === MessageDirection.INCOMING)?.count || '0'),
+        },
+      };
+    });
   }
 
   private async loadOverview(): Promise<OverviewStats> {

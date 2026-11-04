@@ -5,7 +5,6 @@ import { warnIfInsecureHttpUrl } from '../utils/urlSecurity';
 import { isKeyUnusable } from '../utils/authLifecycle';
 import { fetchAllPages } from '../utils/fetchAllPages';
 
-
 // Resolve the API base URL. By default this is the same-origin relative path '/api',
 // correct when the dashboard and API are served from the same origin (the default
 // single-container setup). For a split-origin deployment (dashboard hosted separately
@@ -1005,7 +1004,7 @@ export const sessionApi = {
       body: JSON.stringify({ phoneNumber }),
     }),
   getStats: () => request<SessionStats>('/sessions/stats/overview'),
-    // Estadísticas de las sesiones del tenant autenticado mediante JWT.
+  // Estadísticas de las sesiones del tenant autenticado mediante JWT.
   getStatsForTenant: () => {
     const token = sessionStorage.getItem('openwa_access_token');
 
@@ -1744,6 +1743,16 @@ export const pluginInstancesApi = {
 // Statistics API (mirrors src/modules/stats)
 // =============================================================================
 
+export interface TenantMessageOverview {
+  sent: number;
+  received: number;
+  failed: number;
+  today: {
+    sent: number;
+    received: number;
+  };
+}
+
 export type StatsPeriod = '24h' | '7d' | '30d';
 
 export interface OverviewStats {
@@ -1764,7 +1773,18 @@ export interface MessageStats {
   topChats: Array<{ chatId: string; chatName?: string | null; messageCount: number }>;
 }
 
+// La Estadisyica De Los mensajes
 export const statsApi = {
   getOverview: () => request<OverviewStats>('/stats/overview'),
+  // Estadísticas de mensajes del tenant autenticado mediante JWT.
+  getOverviewForTenant: () => {
+    const token = sessionStorage.getItem('openwa_access_token');
+
+    if (!token) {
+      throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    }
+
+    return humanAuthRequest<TenantMessageOverview>('/stats/tenant/overview', {}, token);
+  },
   getMessages: (period: StatsPeriod) => request<MessageStats>(`/stats/messages?period=${period}`),
 };

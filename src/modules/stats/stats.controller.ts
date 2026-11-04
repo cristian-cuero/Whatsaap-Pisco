@@ -3,8 +3,11 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MessageStatsResponseDto, OverviewStatsResponseDto, SessionStatsResponseDto } from './dto/stats-response.dto';
 import { StatsService } from './stats.service';
 import { StatsQueryDto } from './dto/stats-query.dto';
-import { RequireRole, RequireUnscopedKey } from '../auth/decorators/auth.decorators';
+import { RequireRole, RequireUnscopedKey, Public } from '../auth/decorators/auth.decorators';
 import { ApiKeyRole } from '../auth/entities/api-key.entity';
+import { UseGuards } from '@nestjs/common';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
 
 @ApiTags('statistics')
 @Controller('stats')
@@ -25,6 +28,13 @@ export class StatsController {
   })
   async getOverview() {
     return this.statsService.getOverview();
+  }
+  @Get('tenant/overview')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  @ApiOperation({ summary: 'Get message statistics for the authenticated tenant' })
+  async getTenantOverview(@CurrentTenant() tenantId: string) {
+    return this.statsService.getTenantOverview(tenantId);
   }
 
   @Get('messages')
