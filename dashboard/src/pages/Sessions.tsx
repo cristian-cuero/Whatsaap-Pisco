@@ -177,7 +177,7 @@ export function Sessions() {
       for (;;) {
         request = ++listRequest.current;
         const writes = rowWrites.current;
-        data = await sessionApi.list();
+        data = await sessionApi.listForTenant();
         if (request < listApplied.current) return sessionsRef.current;
         if (rowWrites.current === writes) break;
         // Only the most recently started read can hold the newest request, so this is never itself.
