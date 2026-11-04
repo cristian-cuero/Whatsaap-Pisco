@@ -1719,7 +1719,10 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
   /**
    * Get overall session statistics for multi-session monitoring
    */
-  async getStats(allowedSessions?: string[] | null): Promise<{
+  async getStats(
+    allowedSessions?: string[] | null,
+    tenantId?: string,
+  ): Promise<{
     total: number;
     active: number;
     ready: number;
@@ -1734,12 +1737,23 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
     // DEFAULT_LIST_LIMIT for the HTTP routes, so reusing it here would silently undercount `total` and
     // `byStatus` on deployments with more sessions than that cap. A grouped COUNT is correct at any
     // scale and cheaper (no entity hydration).
+
+    const tenantSessionIds = tenantId
+      ? (
+          await this.sessionRepository.find({
+            select: { id: true },
+            where: { tenantId },
+          })
+        ).map(session => session.id)
+      : null;
     const qb = this.sessionRepository
       .createQueryBuilder('session')
       .select('session.status', 'status')
       .addSelect('COUNT(session.id)', 'count');
     if (scope) {
       qb.where('session.id IN (:...scope)', { scope });
+    } else if (tenantId) {
+      qb.where('session.tenantId = :tenantId', { tenantId });
     }
     const rows = await qb.groupBy('session.status').getRawMany<{ status: string; count: string }>();
 
@@ -1756,7 +1770,11 @@ export class SessionService implements OnModuleDestroy, OnModuleInit, OnApplicat
     return {
       total,
       // engines is keyed by session id; a scoped key sees only its own running engines, not the global count.
-      active: scope ? [...this.engines.keys()].filter(id => scope.includes(id)).length : this.engines.size,
+      active: scope
+        ? [...this.engines.keys()].filter(id => scope.includes(id)).length
+        : tenantSessionIds
+          ? [...this.engines.keys()].filter(id => tenantSessionIds.includes(id)).length
+          : this.engines.size,
       ready: byStatus[SessionStatus.READY] || 0,
       disconnected: byStatus[SessionStatus.DISCONNECTED] || 0,
       byStatus,

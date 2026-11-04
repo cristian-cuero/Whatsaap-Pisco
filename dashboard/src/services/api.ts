@@ -5,6 +5,7 @@ import { warnIfInsecureHttpUrl } from '../utils/urlSecurity';
 import { isKeyUnusable } from '../utils/authLifecycle';
 import { fetchAllPages } from '../utils/fetchAllPages';
 
+
 // Resolve the API base URL. By default this is the same-origin relative path '/api',
 // correct when the dashboard and API are served from the same origin (the default
 // single-container setup). For a split-origin deployment (dashboard hosted separately
@@ -1004,6 +1005,16 @@ export const sessionApi = {
       body: JSON.stringify({ phoneNumber }),
     }),
   getStats: () => request<SessionStats>('/sessions/stats/overview'),
+    // Estadísticas de las sesiones del tenant autenticado mediante JWT.
+  getStatsForTenant: () => {
+    const token = sessionStorage.getItem('openwa_access_token');
+
+    if (!token) {
+      throw new Error('No hay una sesión autenticada. Inicia sesión nuevamente.');
+    }
+
+    return humanAuthRequest<SessionStats>('/sessions/tenant/stats/overview', {}, token);
+  },
   getGroups: (id: string) =>
     request<{ id: string; name?: string; linkedParentJID?: string | null }[]>(`/sessions/${id}/groups`),
   // Operator route, Baileys only: whatsapp-web.js answers 501. Participants are WhatsApp ids (`…@c.us`).

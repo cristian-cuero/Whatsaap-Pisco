@@ -185,6 +185,13 @@ export class SessionController {
     });
     return sessions.map(s => this.transformSession(s));
   }
+  // es el resumen General de las sesiones del tenant, incluyendo el total de sesiones, el número de sesiones activas, el número de sesiones listas y desconectadas, y un desglose por estado. El endpoint utiliza el decorador @CurrentTenant para obtener el tenantId del JWT y llama al método getStats del servicio SessionService para obtener las estadísticas.
+  @Get('tenant/stats/overview')
+  @Public()
+  @UseGuards(HumanJwtGuard)
+  async getTenantStats(@CurrentTenant() tenantId: string) {
+    return this.sessionService.getStats(undefined, tenantId);
+  }
 
   //buscar una Session Por El tenat
   @Get('tenant')

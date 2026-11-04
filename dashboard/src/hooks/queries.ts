@@ -51,7 +51,7 @@ export function useSessionsQuery() {
 export function useSessionStatsQuery() {
   return useQuery({
     queryKey: queryKeys.sessionStats,
-    queryFn: sessionApi.getStats,
+    queryFn: sessionApi.getStatsForTenant,
     staleTime: 30_000,
   });
 }
