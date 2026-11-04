@@ -18,7 +18,56 @@ import {
 @ApiTags('status')
 @Controller('sessions/:sessionId/status')
 export class StatusController {
-  constructor(private readonly statusService: StatusService) {}
+  constructor(
+    private readonly statusService: StatusService,
+    private readonly sessionService: SessionService,
+  ) {}
+
+  private async assertTenantSession(sessionId: string, tenantId: string): Promise<void> {
+    await this.sessionService.findOne(sessionId, tenantId);
+  }
+
+  @Get('tenant')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantStatuses(@Param('sessionId') sessionId: string, @CurrentTenant() tenantId: string) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return { statuses: await this.statusService.getStatuses(sessionId) };
+  }
+
+  @Get('tenant/:id')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantContactStatus(
+    @Param('sessionId') sessionId: string,
+    @Param('id') contactId: string,
+    @CurrentTenant() tenantId: string,
+  ) {
+    await this.assertTenantSession(sessionId, tenantId);
+    return { statuses: await this.statusService.getContactStatus(sessionId, contactId) };
+  }
+
+  @Get('tenant/:statusId/media')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantStatusMedia(
+    @Param('sessionId') sessionId: string,
+    @Param('statusId') statusId: string,
+    @CurrentTenant() tenantId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    await this.assertTenantSession(sessionId, tenantId);
+    const { buffer, mimetype } = await this.statusService.getStatusMedia(sessionId, statusId);
+    res.set({
+      'Content-Type': mimetype,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'attachment',
+    });
+    return new StreamableFile(buffer);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get all contact status updates' })
