@@ -420,7 +420,7 @@ export function Sessions() {
       // `status: 'connecting'` — a value the gateway never emits — while keeping every other field
       // from before the start, which now includes `engineLoaded` and would leave the card offering
       // Start for a session that just acquired an engine.
-      const started = await sessionApi.start(id);
+      const started = await sessionApi.startForTenant(id);
       rowWrites.current += 1;
       updateSessions(current => replaceSession(current, started));
       // A 200 does not promise the engine is still there when the list is read back: a concurrent stop
