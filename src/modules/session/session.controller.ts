@@ -259,6 +259,22 @@ export class SessionController {
 
     return paginate(chats, limit ? parseInt(limit, 10) : undefined, skip);
   }
+  @Get('tenant/:sessionId/groups')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  async getTenantGroups(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<{ id: string; name: string; linkedParentJID?: string | null }[]> {
+    await this.sessionService.findOne(id, tenantId);
+    const groups = await this.sessionService.listGroups(id);
+    const skip = offset ? parseInt(offset, 10) : undefined;
+    return paginate(groups, limit ? parseInt(limit, 10) : undefined, skip);
+  }
+
   // Operaciones de chat para el dashboard autenticado con JWT.
   // Todas validan primero que la sesión pertenezca al tenant del token.
   @Post('tenant/:sessionId/chats/read')
