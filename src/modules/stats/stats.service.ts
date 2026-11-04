@@ -270,6 +270,51 @@ export class StatsService {
     };
   }
 
+  // All detailed analytics are restricted through the owning sessions' tenantId.
+  async getTenantMessageStats(tenantId: string, period: '24h' | '7d' | '30d'): Promise<MessageStats> {
+    return this.memoized(`tenant-messages:${tenantId}:${period}`, async () => {
+      const since = this.getPeriodStart(period);
+      const interval = period === '24h' ? 'hour' : 'day';
+      const base = () => this.messageRepo.createQueryBuilder('m').innerJoin(Session, 's', 's.id = m.sessionId').where('s.tenantId = :tenantId', { tenantId });
+
+      const seriesRaw = await base()
+        .select(timeSeriesTimestampSql(this.dataDbType, interval), 'bucket')
+        .addSelect(`SUM(CASE WHEN m.direction = 'outgoing' THEN 1 ELSE 0 END)`, 'sent')
+        .addSelect(`SUM(CASE WHEN m.direction = 'incoming' THEN 1 ELSE 0 END)`, 'received')
+        .andWhere('m.createdAt >= :since', { since })
+        .groupBy('bucket').orderBy('bucket', 'ASC')
+        .getRawMany<{ bucket: string; sent: string; received: string }>();
+      const timeSeries = seriesRaw.map(row => ({ timestamp: row.bucket, sent: parseInt(row.sent || '0'), received: parseInt(row.received || '0') }));
+
+      const typeRaw = await base().select('m.type', 'type').addSelect('COUNT(*)', 'count')
+        .andWhere('m.createdAt >= :since', { since })
+        .andWhere("((m.body IS NOT NULL AND m.body != '') OR m.metadata IS NOT NULL)")
+        .groupBy('m.type').getRawMany<{ type: string; count: string }>();
+      const byType: Record<string, number> = {};
+      for (const row of typeRaw) byType[row.type || 'unknown'] = parseInt(row.count);
+
+      const sessionRaw = await base().select('m.sessionId', 'sessionId').addSelect('s.name', 'name')
+        .addSelect('m.direction', 'direction').addSelect('COUNT(*)', 'count')
+        .andWhere('m.createdAt >= :since', { since })
+        .groupBy('m.sessionId').addGroupBy('s.name').addGroupBy('m.direction')
+        .getRawMany<{ sessionId: string; name: string; direction: string; count: string }>();
+      const sessionMap = new Map<string, { name: string; sent: number; received: number }>();
+      for (const row of sessionRaw) {
+        const entry = sessionMap.get(row.sessionId) || { name: row.name, sent: 0, received: 0 };
+        if (row.direction === MessageDirection.OUTGOING) entry.sent = parseInt(row.count);
+        if (row.direction === MessageDirection.INCOMING) entry.received = parseInt(row.count);
+        sessionMap.set(row.sessionId, entry);
+      }
+      const bySession = Array.from(sessionMap, ([sessionId, value]) => ({ sessionId, ...value }));
+
+      const chatsRaw = await base().select('m.chatId', 'chatId').addSelect('COUNT(*)', 'messageCount')
+        .addSelect(chatLabelSql('m'), 'chatName').andWhere('m.createdAt >= :since', { since })
+        .groupBy('m.chatId').orderBy('COUNT(*)', 'DESC').limit(10)
+        .getRawMany<{ chatId: string; messageCount: string; chatName: string | null }>();
+      return { timeSeries, byType, bySession, topChats: chatsRaw.map(row => ({ chatId: row.chatId, chatName: row.chatName ?? null, messageCount: parseInt(row.messageCount) })) };
+    });
+  }
+
   async getMessageStats(period: '24h' | '7d' | '30d'): Promise<MessageStats> {
     return this.memoized(`messages:${period}`, () => this.loadMessageStats(period));
   }
