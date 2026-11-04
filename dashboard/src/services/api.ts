@@ -1235,12 +1235,12 @@ export const sessionApi = {
       `/sessions/${id}/messages/tenant/${encodeURIComponent(chatId)}/${encodeURIComponent(messageId)}/media`,
       signal,
     ),
-  getSubscribedChannels: (id: string) => request<Channel[]>(`/sessions/${id}/channels`),
+  getSubscribedChannels: (id: string) => tenantAuthRequest<Channel[]>(`/sessions/${id}/channels/tenant`),
   getChannelMessages: (id: string, channelId: string, limit = 50) =>
-    request<ChannelMessage[]>(`/sessions/${id}/channels/${encodeURIComponent(channelId)}/messages?limit=${limit}`),
-  getContactStatuses: (id: string) => request<{ statuses: StatusUpdate[] }>(`/sessions/${id}/status`),
+    tenantAuthRequest<ChannelMessage[]>(`/sessions/${id}/channels/tenant/${encodeURIComponent(channelId)}/messages?limit=${limit}`),
+  getContactStatuses: (id: string) => tenantAuthRequest<{ statuses: StatusUpdate[] }>(`/sessions/${id}/status/tenant`),
   getStatusMediaBlob: (id: string, statusId: string, signal?: AbortSignal) =>
-    requestBlob(`/sessions/${id}/status/${encodeURIComponent(statusId)}/media`, signal),
+    tenantAuthBlob(`/sessions/${id}/status/tenant/${encodeURIComponent(statusId)}/media`, signal),
   postTextStatus: (
     id: string,
     text: string,
