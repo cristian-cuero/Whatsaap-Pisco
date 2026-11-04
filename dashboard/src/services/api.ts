@@ -1003,6 +1003,18 @@ export const sessionApi = {
     );
   },
 
+  // Detener una sesión del tenant sin desvincular el dispositivo.
+  stopForTenant: (id: string) =>
+    tenantAuthRequest<Session>(`/sessions/tenant/${id}/stop`, { method: 'POST' }),
+
+  // Desvincular WhatsApp y limpiar las credenciales de la sesión del tenant.
+  logoutForTenant: (id: string) =>
+    tenantAuthRequest<Session>(`/sessions/tenant/${id}/logout`, { method: 'POST' }),
+
+  // Eliminar una sesión que pertenece al tenant autenticado.
+  deleteForTenant: (id: string) =>
+    tenantAuthRequest<void>(`/sessions/tenant/${id}`, { method: 'DELETE' }),
+
   // Obtener el QR de una sesión del tenant mediante JWT.
   getQRForTenant: (id: string) => {
     const token = sessionStorage.getItem('openwa_access_token');
