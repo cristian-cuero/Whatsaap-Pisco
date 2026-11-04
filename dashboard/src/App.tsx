@@ -9,8 +9,7 @@ import { NumberCheckProvider } from './components/NumberCheckProvider';
 import { useRole } from './hooks/useRole';
 import { RoleProvider } from './components/RoleProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { API_BASE_URL } from './services/api';
-import { clearActorState, isUserRole, resolveStartupValidation } from './utils/authLifecycle';
+
 import { humanAuthApi } from './services/api';
 import type { HumanLoginResponse } from './services/api';
 import { clearActorState } from './utils/authLifecycle';
@@ -246,6 +245,71 @@ function AppContent() {
       </div>
     );
   }
+    const loadingFallback = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+      }}
+    >
+      <Loader2 className="animate-spin" size={32} />
+    </div>
+  );
+
+  if (!isAuthenticated) {
+    return (
+      <Suspense fallback={loadingFallback}>
+        <Login onLogin={handleLogin} />
+      </Suspense>
+    );
+  }
+
+  return (
+    <ToastProvider>
+      <NumberCheckProvider>
+        <BrowserRouter>
+          <Suspense fallback={loadingFallback}>
+            <Routes>
+              <Route
+                path="/"
+                element={<Layout onLogout={handleLogout} userRole={role} />}
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="sessions" element={<Sessions />} />
+                <Route path="chats" element={<Chats />} />
+                <Route path="number-checker" element={<NumberChecker />} />
+                <Route path="webhooks" element={<Webhooks />} />
+                <Route path="templates" element={<Templates />} />
+
+                {role === 'admin' && !scoped && (
+                  <Route path="api-keys" element={<ApiKeys />} />
+                )}
+
+                {role === 'admin' && (
+                  <Route path="logs" element={<Logs />} />
+                )}
+
+                <Route path="message-tester" element={<MessageTester />} />
+
+                {role === 'admin' && !scoped && (
+                  <Route path="infrastructure" element={<Infrastructure />} />
+                )}
+
+                {role === 'admin' && !scoped && (
+                  <Route path="plugins" element={<Plugins />} />
+                )}
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </NumberCheckProvider>
+    </ToastProvider>
+  );
+}
 
 function App() {
   return (
