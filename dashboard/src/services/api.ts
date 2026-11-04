@@ -1229,7 +1229,7 @@ export const sessionApi = {
     recipients?: string[],
     extra?: { backgroundColor?: string; font?: number },
   ) =>
-    request(`/sessions/${id}/status/send-text`, {
+    tenantAuthRequest(`/sessions/${id}/status/tenant/send-text`, {
       method: 'POST',
       body: JSON.stringify({ text, recipients, ...extra }),
     }),
@@ -1239,7 +1239,7 @@ export const sessionApi = {
     recipients?: string[],
     caption?: string,
   ) =>
-    request(`/sessions/${id}/status/send-image`, {
+    tenantAuthRequest(`/sessions/${id}/status/tenant/send-image`, {
       method: 'POST',
       body: JSON.stringify({ image, recipients, caption }),
     }),
