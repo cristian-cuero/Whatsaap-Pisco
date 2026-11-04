@@ -95,7 +95,7 @@ export function useSessionPairing({ sessions, sessionsRef, reloadSessions }: Use
       // by design (the engine hasn't produced one), and the WS session.qr push covers first display.
       if (currentSession?.status !== 'qr_ready') return;
       try {
-        const qr = await sessionApi.getQR(sessionId);
+        const qr = await sessionApi.getQRForTenant(sessionId);
         if (!isCurrent()) return;
         visit.applied = request;
         setQrData(cur => (cur?.sessionId === sessionId ? { ...cur, qrCode: qr.qrCode } : cur));
@@ -112,7 +112,7 @@ export function useSessionPairing({ sessions, sessionsRef, reloadSessions }: Use
         // instead of being torn down mid-pairing — it closes on the real 'ready'/'failed' transition.
         let updated: Session | null = null;
         try {
-          updated = await sessionApi.get(sessionId);
+          updated = await sessionApi.getForTenant(sessionId);
         } catch (error) {
           // A status read that got no answer (the network, a proxy dropping it, a gateway restart) or a
           // refusal for rate or a server fault says nothing about the session: keep the modal, and a
@@ -213,7 +213,7 @@ export function useSessionPairing({ sessions, sessionsRef, reloadSessions }: Use
     if (session?.status === 'qr_ready') {
       const request = ++visit.requested;
       try {
-        const qr = await sessionApi.getQR(id);
+        const qr = await sessionApi.getQRForTenant(id);
         if (qrVisit.current !== visit || request < visit.applied) return;
         visit.applied = request;
         setQrData(cur => (cur?.sessionId === id ? { ...cur, qrCode: qr.qrCode } : cur));
