@@ -11,6 +11,10 @@ import { RoleProvider } from './components/RoleProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { API_BASE_URL } from './services/api';
 import { clearActorState, isUserRole, resolveStartupValidation } from './utils/authLifecycle';
+import { humanAuthApi } from './services/api';
+import type { HumanLoginResponse } from './services/api';
+import { clearActorState } from './utils/authLifecycle';
+
 import './App.css';
 
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
@@ -36,113 +40,212 @@ const queryClient = new QueryClient({
   },
 });
 
+function mapBackendRole(role: string): 'admin' | 'operator' | 'viewer' {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+      return 'admin';
+    case 'MEMBER':
+      return 'operator';
+    case 'VIEWER':
+    default:
+      return 'viewer';
+  }
+}
+//viejo
+// function AppContent() {
+//   // Capture the key ONCE at mount. Read live per render, the null→key transition when
+//   // handleLogin stores a fresh key would re-fire the startup re-validation effect below and
+//   // double the /auth/validate request on every sign-in — the effect is for genuine page
+//   // refreshes with a saved key only.
+//   const [savedKey] = useState(() => sessionStorage.getItem('openwa_api_key'));
+//   const [isAuthenticated, setIsAuthenticated] = useState(!!savedKey);
+//   const [, setApiKey] = useState(savedKey || '');
+//   const { setRole, role, setEngineType, setScoped, scoped } = useRole();
+
+//   const handleLogin = (key: string, validatedRole?: string, engineType?: string, scoped = false) => {
+//     setApiKey(key);
+//     sessionStorage.setItem('openwa_api_key', key);
+
+//     // The login page's validate response already carried the role, so no second /auth/validate
+//     // round-trip is needed here. An absent or unrecognized role falls back to viewer, the
+//     // least-privileged default.
+//     setRole(isUserRole(validatedRole) ? validatedRole : 'viewer');
+//     setEngineType(engineType ?? null);
+//     setScoped(scoped);
+
+//     setIsAuthenticated(true);
+//   };
+
+//   const handleLogout = useCallback(() => {
+//     setApiKey('');
+//     setIsAuthenticated(false);
+//     setRole(null);
+//     setEngineType(null);
+//     setScoped(false);
+//     sessionStorage.removeItem('openwa_api_key');
+//     // Wipe the React Query cache too: it is keyed by resource, not actor, so without a full
+//     // clear a logout → login in the same tab with a different key/scope shows the previous
+//     // actor's sessions/messages/apiKeys/audit rows.
+//     clearActorState(queryClient);
+//   }, [setRole, setEngineType, setScoped]);
+
+//   // Re-validate and refresh the role on mount if already authenticated
+//   useEffect(() => {
+//     if (!savedKey) return;
+
+//     fetch(`${API_BASE_URL}/auth/validate`, {
+//       method: 'POST',
+//       headers: { 'X-API-Key': savedKey },
+//     })
+//       .then(async res => {
+//         const decision = resolveStartupValidation(res.status, await res.json().catch(() => null));
+//         // Nothing cancels this request on logout. If the user has since signed out, or back in with
+//         // another key, the answer is about a key no longer in use: applying it would hand the new
+//         // session the old key's role, or log it out over the old key's 401.
+//         if (sessionStorage.getItem('openwa_api_key') !== savedKey) return;
+//         if (decision.action === 'logout') {
+//           handleLogout();
+//         } else if (decision.action === 'role') {
+//           setRole(decision.role);
+//           setScoped(decision.scoped);
+//           if (decision.engineType) setEngineType(decision.engineType);
+//         }
+//       })
+//       .catch(() => {
+//         // Network failure (API unreachable): keep the cached role so a transient outage at
+//         // page load doesn't eject the user — an explicit 401/403 above still logs out.
+//       });
+//   }, [savedKey, setRole, setEngineType, setScoped, handleLogout]);
+
+//   const loadingFallback = (
+//     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+//       <Loader2 className="animate-spin" size={32} />
+//     </div>
+//   );
+
+//   if (!isAuthenticated) {
+//     return (
+//       <Suspense fallback={loadingFallback}>
+//         <Login onLogin={handleLogin} />
+//       </Suspense>
+//     );
+//   }
+
+//   return (
+//     <ToastProvider>
+//       {/* Above the routes, so a bulk Number Checker run survives leaving its page; a logout unmounts it. */}
+//       <NumberCheckProvider>
+//         <BrowserRouter>
+//           <Suspense fallback={loadingFallback}>
+//             <Routes>
+//               <Route path="/" element={<Layout onLogout={handleLogout} userRole={role} />}>
+//                 <Route index element={<Dashboard />} />
+//                 <Route path="sessions" element={<Sessions />} />
+//                 <Route path="chats" element={<Chats />} />
+//                 <Route path="number-checker" element={<NumberChecker />} />
+//                 <Route path="webhooks" element={<Webhooks />} />
+//                 <Route path="templates" element={<Templates />} />
+//                 {role === 'admin' && !scoped && <Route path="api-keys" element={<ApiKeys />} />}
+//                 {role === 'admin' && <Route path="logs" element={<Logs />} />}
+//                 <Route path="message-tester" element={<MessageTester />} />
+//                 {role === 'admin' && !scoped && <Route path="infrastructure" element={<Infrastructure />} />}
+//                 {role === 'admin' && !scoped && <Route path="plugins" element={<Plugins />} />}
+//                 <Route path="*" element={<Navigate to="/" replace />} />
+//               </Route>
+//             </Routes>
+//           </Suspense>
+//         </BrowserRouter>
+//       </NumberCheckProvider>
+//     </ToastProvider>
+//   );
+// }
+
 function AppContent() {
-  // Capture the key ONCE at mount. Read live per render, the null→key transition when
-  // handleLogin stores a fresh key would re-fire the startup re-validation effect below and
-  // double the /auth/validate request on every sign-in — the effect is for genuine page
-  // refreshes with a saved key only.
-  const [savedKey] = useState(() => sessionStorage.getItem('openwa_api_key'));
-  const [isAuthenticated, setIsAuthenticated] = useState(!!savedKey);
-  const [, setApiKey] = useState(savedKey || '');
+  const [savedToken] = useState(() =>
+    sessionStorage.getItem('openwa_access_token')
+  );
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(!!savedToken);
+
   const { setRole, role, setEngineType, setScoped, scoped } = useRole();
 
-  const handleLogin = (key: string, validatedRole?: string, engineType?: string, scoped = false) => {
-    setApiKey(key);
-    sessionStorage.setItem('openwa_api_key', key);
+  const handleLogin = (response: HumanLoginResponse) => {
+    sessionStorage.setItem('openwa_access_token', response.accessToken);
 
-    // The login page's validate response already carried the role, so no second /auth/validate
-    // round-trip is needed here. An absent or unrecognized role falls back to viewer, the
-    // least-privileged default.
-    setRole(isUserRole(validatedRole) ? validatedRole : 'viewer');
-    setEngineType(engineType ?? null);
-    setScoped(scoped);
+    setRole(mapBackendRole(response.role));
+
+    // La autenticación humana no depende de una API Key limitada por sesión.
+    setEngineType(null);
+    setScoped(false);
 
     setIsAuthenticated(true);
   };
 
   const handleLogout = useCallback(() => {
-    setApiKey('');
+    sessionStorage.removeItem('openwa_access_token');
+
     setIsAuthenticated(false);
     setRole(null);
     setEngineType(null);
     setScoped(false);
-    sessionStorage.removeItem('openwa_api_key');
-    // Wipe the React Query cache too: it is keyed by resource, not actor, so without a full
-    // clear a logout → login in the same tab with a different key/scope shows the previous
-    // actor's sessions/messages/apiKeys/audit rows.
+
     clearActorState(queryClient);
   }, [setRole, setEngineType, setScoped]);
 
-  // Re-validate and refresh the role on mount if already authenticated
   useEffect(() => {
-    if (!savedKey) return;
+    if (!savedToken) return;
 
-    fetch(`${API_BASE_URL}/auth/validate`, {
-      method: 'POST',
-      headers: { 'X-API-Key': savedKey },
-    })
-      .then(async res => {
-        const decision = resolveStartupValidation(res.status, await res.json().catch(() => null));
-        // Nothing cancels this request on logout. If the user has since signed out, or back in with
-        // another key, the answer is about a key no longer in use: applying it would hand the new
-        // session the old key's role, or log it out over the old key's 401.
-        if (sessionStorage.getItem('openwa_api_key') !== savedKey) return;
-        if (decision.action === 'logout') {
+    let cancelled = false;
+
+    humanAuthApi.me(savedToken)
+      .then(response => {
+        if (cancelled) return;
+
+        if (
+          sessionStorage.getItem('openwa_access_token') !== savedToken
+        ) return;
+
+        setRole(mapBackendRole(response.user.role));
+        setEngineType(null);
+        setScoped(false);
+        setIsAuthenticated(true);
+      })
+      .catch(error => {
+        if (cancelled) return;
+
+        // Solo eliminamos la sesión cuando el backend rechaza el JWT.
+        // Un error de conexión no significa que el token sea inválido.
+        if (
+          sessionStorage.getItem('openwa_access_token') !== savedToken
+        ) return;
+
+        if (error instanceof Error && error.message.includes('401')) {
           handleLogout();
-        } else if (decision.action === 'role') {
-          setRole(decision.role);
-          setScoped(decision.scoped);
-          if (decision.engineType) setEngineType(decision.engineType);
         }
       })
-      .catch(() => {
-        // Network failure (API unreachable): keep the cached role so a transient outage at
-        // page load doesn't eject the user — an explicit 401/403 above still logs out.
+      .finally(() => {
+        if (!cancelled) setIsCheckingAuth(false);
       });
-  }, [savedKey, setRole, setEngineType, setScoped, handleLogout]);
 
-  const loadingFallback = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-      <Loader2 className="animate-spin" size={32} />
-    </div>
-  );
+    return () => {
+      cancelled = true;
+    };
+  }, [savedToken, setRole, setEngineType, setScoped, handleLogout]);
 
-  if (!isAuthenticated) {
+  if (isCheckingAuth) {
     return (
-      <Suspense fallback={loadingFallback}>
-        <Login onLogin={handleLogin} />
-      </Suspense>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh'
+      }}>
+        <Loader2 className="animate-spin" size={32} />
+      </div>
     );
   }
-
-  return (
-    <ToastProvider>
-      {/* Above the routes, so a bulk Number Checker run survives leaving its page; a logout unmounts it. */}
-      <NumberCheckProvider>
-        <BrowserRouter>
-          <Suspense fallback={loadingFallback}>
-            <Routes>
-              <Route path="/" element={<Layout onLogout={handleLogout} userRole={role} />}>
-                <Route index element={<Dashboard />} />
-                <Route path="sessions" element={<Sessions />} />
-                <Route path="chats" element={<Chats />} />
-                <Route path="number-checker" element={<NumberChecker />} />
-                <Route path="webhooks" element={<Webhooks />} />
-                <Route path="templates" element={<Templates />} />
-                {role === 'admin' && !scoped && <Route path="api-keys" element={<ApiKeys />} />}
-                {role === 'admin' && <Route path="logs" element={<Logs />} />}
-                <Route path="message-tester" element={<MessageTester />} />
-                {role === 'admin' && !scoped && <Route path="infrastructure" element={<Infrastructure />} />}
-                {role === 'admin' && !scoped && <Route path="plugins" element={<Plugins />} />}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </NumberCheckProvider>
-    </ToastProvider>
-  );
-}
 
 function App() {
   return (
