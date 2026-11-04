@@ -67,6 +67,9 @@ import {
 import { UseGuards } from '@nestjs/common';
 import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
 import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
 
 @ApiTags('sessions')
 @Controller('sessions')
@@ -127,7 +130,8 @@ export class SessionController {
   // creacion de la session pero con el tenant id
   @Post('tenant')
   @Public()
-  @UseGuards(HumanJwtGuard)
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN)
   @ApiOperation({ summary: ' Create a session for the authenticated tenant' })
   @ApiResponse({
     status: 201,
@@ -191,7 +195,8 @@ export class SessionController {
   // es el resumen General de las sesiones del tenant, incluyendo el total de sesiones, el número de sesiones activas, el número de sesiones listas y desconectadas, y un desglose por estado. El endpoint utiliza el decorador @CurrentTenant para obtener el tenantId del JWT y llama al método getStats del servicio SessionService para obtener las estadísticas.
   @Get('tenant/stats/overview')
   @Public()
-  @UseGuards(HumanJwtGuard)
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
   async getTenantStats(@CurrentTenant() tenantId: string) {
     return this.sessionService.getStats(undefined, tenantId);
   }
@@ -199,7 +204,8 @@ export class SessionController {
   //buscar una Session Por El tenat
   @Get('tenant')
   @Public()
-  @UseGuards(HumanJwtGuard)
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
   @ApiOperation({ summary: 'List sessions belonging to the authenticated tenant' })
   @ApiResponse({
     status: 200,
@@ -233,7 +239,8 @@ export class SessionController {
   // Encontramos La Session Por El Tenant Y El ID
   @Get('tenant/:sessionId')
   @Public()
-  @UseGuards(HumanJwtGuard)
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
   async findTenantSession(
     @Param('sessionId', ParseUUIDPipe) id: string,
     @CurrentTenant() tenantId: string,
@@ -245,7 +252,8 @@ export class SessionController {
   //iniciar session con JWT
   @Post('tenant/:sessionId/start')
   @Public()
-  @UseGuards(HumanJwtGuard)
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
   @HttpCode(HttpStatus.OK)
   async startTenantSession(
     @Param('sessionId', ParseUUIDPipe) id: string,
@@ -270,7 +278,8 @@ export class SessionController {
   // solictar El Qr
   @Get('tenant/:sessionId/qr')
   @Public()
-  @UseGuards(HumanJwtGuard)
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
   async getTenantQRCode(
     @Param('sessionId', ParseUUIDPipe) id: string,
     @CurrentTenant() tenantId: string,
