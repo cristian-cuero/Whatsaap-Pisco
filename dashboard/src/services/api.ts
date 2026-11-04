@@ -1099,34 +1099,34 @@ export const sessionApi = {
     return humanAuthRequest<SessionStats>('/sessions/tenant/stats/overview', {}, token);
   },
   getGroups: (id: string) =>
-    request<{ id: string; name?: string; linkedParentJID?: string | null }[]>(`/sessions/${id}/groups`),
+    tenantAuthRequest<{ id: string; name?: string; linkedParentJID?: string | null }[]>(`/sessions/tenant/${id}/groups`),
   // Operator route, Baileys only: whatsapp-web.js answers 501. Participants are WhatsApp ids (`…@c.us`).
   createGroup: (id: string, name: string, participants: string[]) =>
-    request<{ id: string; name: string }>(`/sessions/${id}/groups`, {
+    tenantAuthRequest<{ id: string; name: string }>(`/sessions/${id}/groups/tenant`, {
       method: 'POST',
       body: JSON.stringify({ name, participants }),
     }),
   getGroup: (id: string, groupId: string) =>
-    request<GroupInfo>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}`),
+    tenantAuthRequest<GroupInfo>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}`),
   // The group writes below are operator routes. Whether WhatsApp lets this account make them (an admin,
   // or any member while the group's info is unlocked) is decided by WhatsApp; a refusal answers 403.
   setGroupSubject: (id: string, groupId: string, subject: string) =>
-    request<GroupAck>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}/subject`, {
+    tenantAuthRequest<GroupAck>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/subject`, {
       method: 'PUT',
       body: JSON.stringify({ subject }),
     }),
   setGroupDescription: (id: string, groupId: string, description: string) =>
-    request<GroupAck>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}/description`, {
+    tenantAuthRequest<GroupAck>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/description`, {
       method: 'PUT',
       body: JSON.stringify({ description }),
     }),
   setGroupPicture: (id: string, groupId: string, base64: string, mimetype: string) =>
-    request<GroupAck>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}/picture`, {
+    tenantAuthRequest<GroupAck>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/picture`, {
       method: 'PUT',
       body: JSON.stringify({ base64, mimetype }),
     }),
   addGroupParticipants: (id: string, groupId: string, participants: string[]) =>
-    request<GroupParticipantsAck>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}/participants`, {
+    tenantAuthRequest<GroupParticipantsAck>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/participants`, {
       method: 'POST',
       body: JSON.stringify({ participants }),
     }),
@@ -1137,11 +1137,11 @@ export const sessionApi = {
     }),
   setGroupAdmins: (id: string, groupId: string, participants: string[], admin: boolean) =>
     request<GroupParticipantsAck>(
-      `/sessions/${id}/groups/${encodeURIComponent(groupId)}/participants/${admin ? 'promote' : 'demote'}`,
+      `/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/participants/${admin ? 'promote' : 'demote'}`,
       { method: 'POST', body: JSON.stringify({ participants }) },
     ),
   leaveGroup: (id: string, groupId: string) =>
-    request<GroupAck>(`/sessions/${id}/groups/${encodeURIComponent(groupId)}/leave`, { method: 'POST' }),
+    tenantAuthRequest<GroupAck>(`/sessions/${id}/groups/tenant/${encodeURIComponent(groupId)}/leave`, { method: 'POST' }),
   getChats: async (id: string, signal?: AbortSignal) => {
     let lastError: unknown;
     const { items, throttled } = await fetchAllPages<Chat>(
