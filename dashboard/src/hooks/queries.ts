@@ -365,7 +365,7 @@ export function useCurrentEngineQuery() {
 export function useStatsOverviewQuery(enabled = true) {
   return useQuery({
     queryKey: queryKeys.statsOverview,
-    queryFn: statsApi.getOverview,
+    queryFn: statsApi.getOverviewForTenant,
     staleTime: 30_000,
     retry: false,
     enabled,
