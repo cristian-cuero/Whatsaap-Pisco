@@ -18,11 +18,13 @@ import { SendIdempotencyKey } from './entities/send-idempotency-key.entity';
 import { SendIdempotencyService } from './idempotency/send-idempotency.service';
 import { SendIdempotencyInterceptor } from './idempotency/send-idempotency.interceptor';
 import { PLUGIN_MESSAGE_PORT } from '../../core/plugins/plugin-host-ports';
+import { HumanAuthModule } from '../human-auth/human-auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Message, MessageBatch, Session, SendIdempotencyKey], 'data'),
     SessionModule,
+    HumanAuthModule,
     TemplateModule,
     ChatMediaModule,
   ],

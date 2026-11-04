@@ -952,25 +952,7 @@ async function requestText(endpoint: string): Promise<string> {
   return response.text();
 }
 
-/** Like {@link request} but returns a Blob — e.g. for status media downloads. */
-async function requestBlob(endpoint: string, signal?: AbortSignal): Promise<Blob> {
-  const url = `${API_BASE_URL}${endpoint}`;
 
-  // Get API key from sessionStorage for authentication
-  const apiKey = sessionStorage.getItem('openwa_api_key');
-
-  const headers: HeadersInit = {
-    ...(apiKey ? { 'X-API-Key': apiKey } : {}),
-  };
-
-  const response = await fetch(url, { headers, signal });
-
-  if (!response.ok) {
-    return handleErrorResponse<Blob>(response, apiKey);
-  }
-
-  return response.blob();
-}
 
 // =============================================================================
 // Session API

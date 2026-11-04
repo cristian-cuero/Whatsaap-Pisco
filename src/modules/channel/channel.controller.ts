@@ -15,6 +15,14 @@ import {
   ENGINE_NOT_READY_409,
   ENGINE_REFUSED_403,
 } from '../../common/openapi/engine-status-responses';
+import { UseGuards } from '@nestjs/common';
+import { SessionService } from '../session/session.service';
+import { Public } from '../auth/decorators/auth.decorators';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
 
 /** Delete, mute and unsubscribe refuse a non-channel id up front, before any channel lookup. */
 const CHANNEL_ID_INVALID_404 =

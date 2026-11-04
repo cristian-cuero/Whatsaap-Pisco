@@ -1,4 +1,3 @@
-import { Controller, Get, Post, Delete, Param, Body, Res, StreamableFile } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { StatusDeletedResponseDto, StatusListResponseDto, StatusResultDto } from './dto/status-response.dto';
@@ -14,7 +13,14 @@ import {
   SESSION_NOT_STARTED_404,
   STATUS_POST_503,
 } from '../../common/openapi/engine-status-responses';
-
+import { Controller, Get, Post, Delete, Param, Body, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { SessionService } from '../session/session.service';
+import { Public } from '../auth/decorators/auth.decorators';
+import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
+import { CurrentTenant } from '../human-auth/decorators/current-tenant.decorator';
+import { TenantRole } from '../tenant/entities/tenant-user.entity';
+import { RequireTenantRoles } from '../human-auth/decorators/tenant-roles.decorator';
+import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
 @ApiTags('status')
 @Controller('sessions/:sessionId/status')
 export class StatusController {
