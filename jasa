@@ -1,0 +1,19 @@
+[1mdiff --git a/src/modules/events/events.gateway.ts b/src/modules/events/events.gateway.ts[m
+[1mindex 5e79229b..c5741169 100644[m
+[1m--- a/src/modules/events/events.gateway.ts[m
+[1m+++ b/src/modules/events/events.gateway.ts[m
+[36m@@ -933,6 +933,14 @@[m [mexport class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate[m
+       return this.createError('INVALID_SESSION', 'sessionId must be "*" or a session id', requestId);[m
+     }[m
+ [m
+[32m+[m[32m    // Si la conexión usa JWT humano, aplicamos autorización por tenant.[m
+[32m+[m[32m    const humanPayload = ([m
+[32m+[m[32m      client.data as {[m
+[32m+[m[32m        humanJwtPayload?: HumanJwtPayload;[m
+[32m+[m[32m      }[m
+[32m+[m[32m    ).humanJwtPayload;[m
+[32m+[m
+[32m+[m
+     for (const subscription of this.pendingSubscriptions.get(client) ?? []) {[m
+       if (sessionId === '*' || subscription.sessionId === sessionId) subscription.cancelled = true;[m
+     }[m

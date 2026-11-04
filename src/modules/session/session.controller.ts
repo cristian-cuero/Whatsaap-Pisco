@@ -235,7 +235,30 @@ export class SessionController {
 
     return sessions.map(session => this.transformSession(session));
   }
+  // Listar chats de una sesión perteneciente al tenant autenticado.
+  @Get('tenant/:sessionId/chats')
+  @Public()
+  @UseGuards(HumanJwtGuard, TenantRolesGuard)
+  @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @ApiOperation({ summary: 'Get chats for a tenant session' })
+  @ApiParam({ name: 'sessionId', description: 'Session ID' })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'offset', required: false })
+  async getTenantChats(
+    @Param('sessionId', ParseUUIDPipe) id: string,
+    @CurrentTenant() tenantId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<ChatSummary[]> {
+    // Primero verificamos que la sesión pertenezca al tenant.
+    await this.sessionService.findOne(id, tenantId);
 
+    // Reutilizamos la consulta existente de WhatsApp.
+    const skip = offset ? parseInt(offset, 10) : undefined;
+    const chats = await this.sessionService.listChats(id, skip);
+
+    return paginate(chats, limit ? parseInt(limit, 10) : undefined, skip);
+  }
   // Encontramos La Session Por El Tenant Y El ID
   @Get('tenant/:sessionId')
   @Public()
