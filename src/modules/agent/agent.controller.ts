@@ -23,12 +23,12 @@ import { Agent } from './entities/agent.entity';
 @Controller('sessions/tenant/:sessionId/agent')
 @Public()
 @UseGuards(HumanJwtGuard, TenantRolesGuard)
-@ApiParam({ name: 'sessionId', description: 'ID de la sesión de WhatsApp' })
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   @Get()
   @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN, TenantRole.AGENT)
+  @ApiParam({ name: 'sessionId', description: 'ID de la sesión de WhatsApp' })
   @ApiOperation({ summary: 'Consultar la configuración de Ruby para una sesión del tenant' })
   @ApiResponse({ status: 200, description: 'Configuración del agente' })
   async getConfiguration(
@@ -40,6 +40,7 @@ export class AgentController {
 
   @Patch()
   @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN)
+  @ApiParam({ name: 'sessionId', description: 'ID de la sesión de WhatsApp' })
   @ApiOperation({ summary: 'Actualizar la configuración general de Ruby' })
   @ApiResponse({ status: 200, description: 'Configuración actualizada' })
   async updateConfiguration(
@@ -52,6 +53,7 @@ export class AgentController {
 
   @Patch('menu/options/:optionId')
   @RequireTenantRoles(TenantRole.OWNER, TenantRole.ADMIN)
+  @ApiParam({ name: 'sessionId', description: 'ID de la sesión de WhatsApp' })
   @ApiOperation({ summary: 'Actualizar una opción individual del menú de Ruby' })
   @ApiParam({ name: 'optionId', description: 'Identificador interno de la opción' })
   @ApiResponse({ status: 200, description: 'Opción actualizada' })
