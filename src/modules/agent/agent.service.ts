@@ -247,6 +247,10 @@ export class AgentService {
 
     const optionIndex = options.findIndex(option => asConfigObject(option).id === optionId);
 
+    if (optionIndex === -1) {
+      throw new NotFoundException('Opción del menú no encontrada');
+    }
+
     if (changes.number !== undefined) {
       if (!Number.isInteger(changes.number) || changes.number < 1) {
         throw new BadRequestException('El número de la opción debe ser un entero positivo');
@@ -259,10 +263,6 @@ export class AgentService {
       if (numberAlreadyUsed) {
         throw new BadRequestException('Ese número ya está asignado a otra opción');
       }
-    }
-
-    if (optionIndex === -1) {
-      throw new NotFoundException('Opción del menú no encontrada');
     }
 
     const updatedOptions = [...options];
