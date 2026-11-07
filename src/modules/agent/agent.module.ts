@@ -8,7 +8,7 @@ import { Session } from '../session/entities/session.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Agent, AgentRequest, Session], 'data')],
-  exports: [TypeOrmModule],
+  exports: [TypeOrmModule, AgentService],
   providers: [AgentService],
 })
 export class AgentModule {}
