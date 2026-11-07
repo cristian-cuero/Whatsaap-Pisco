@@ -203,7 +203,7 @@ export class AgentService {
   }
 
   /**
-   * Actualiza la configuración del agente.
+   * Actualiza la configuración del agente. Reciviendi Todo
    */
   async updateConfiguration(sessionId: string, tenantId: string, changes: UpdateAgentConfiguration): Promise<Agent> {
     const agent = await this.getOrCreateForSession(sessionId, tenantId);
@@ -223,6 +223,48 @@ export class AgentService {
     if (changes.config !== undefined) {
       agent.config = mergeAgentConfig(agent.config ?? {}, changes.config);
     }
+
+    return this.agentRepository.save(agent);
+  }
+
+  // actualiza una opción del menú del agente, conservando el resto de la configuración.
+  async updateMenuOption(
+    sessionId: string,
+    tenantId: string,
+    optionId: string,
+    changes: {
+      label?: string;
+      enabled?: boolean;
+      number?: number;
+    },
+  ): Promise<Agent> {
+    const agent = await this.getOrCreateForSession(sessionId, tenantId);
+
+    const config = asConfigObject(agent.config);
+    const menu = asConfigObject(config.menu);
+
+    const options = Array.isArray(menu.options) ? menu.options : [];
+
+    const optionIndex = options.findIndex(option => asConfigObject(option).id === optionId);
+
+    if (optionIndex === -1) {
+      throw new NotFoundException('Opción del menú no encontrada');
+    }
+
+    const updatedOptions = [...options];
+
+    updatedOptions[optionIndex] = {
+      ...asConfigObject(updatedOptions[optionIndex]),
+      ...changes,
+    };
+
+    agent.config = {
+      ...config,
+      menu: {
+        ...menu,
+        options: updatedOptions,
+      },
+    };
 
     return this.agentRepository.save(agent);
   }
