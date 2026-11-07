@@ -16,7 +16,7 @@ export class Agent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 36, unique: true })
+  @Column({ type: 'varchar', unique: true })
   sessionId!: string;
 
   @OneToOne(() => Session, { onDelete: 'CASCADE' })
