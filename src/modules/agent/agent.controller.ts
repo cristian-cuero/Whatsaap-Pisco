@@ -17,8 +17,10 @@ import { HumanJwtGuard } from '../human-auth/guards/human-jwt.guard';
 import { TenantRolesGuard } from '../human-auth/guards/tenant-roles.guard';
 import { TenantRole } from '../tenant/entities/tenant-user.entity';
 import { Agent } from './entities/agent.entity';
+import { Public } from '../auth/decorators/auth.decorators';
 
 @ApiTags('agent')
+@Public()
 @Controller('sessions/tenant/:sessionId/agent')
 @UseGuards(HumanJwtGuard, TenantRolesGuard)
 export class AgentController {
