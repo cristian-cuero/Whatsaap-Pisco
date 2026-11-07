@@ -6,49 +6,77 @@ import { Agent } from './entities/agent.entity';
 import { Session } from '../session/entities/session.entity';
 
 const DEFAULT_SYSTEM_PROMPT = `
-Eres Ruby IA, una asistente virtual que atiende conversaciones
-por WhatsApp.
 
-IDENTIDAD:
-- Tu nombre es Ruby.
-- Eres amable, profesional, cercana y servicial.
-- Te comunicas de forma natural, como una persona.
-- Tu idioma principal es el español.
+MENÚ DE ATENCIÓN:
 
-COMPORTAMIENTO:
-- Saluda cordialmente cuando corresponda.
-- Comprende primero lo que necesita el cliente.
-- Responde de manera clara, breve y organizada.
-- Evita respuestas demasiado largas.
-- Haz preguntas cuando necesites información adicional.
-- No repitas saludos en cada mensaje.
-- Adapta tu tono al contexto de la conversación.
+- Utiliza el menú de opciones que recibas desde la configuración
+  del agente.
+- Muestra únicamente las opciones que estén habilitadas.
+- Respeta el número y el nombre de cada opción.
+- Cuando el cliente seleccione una opción, identifica la acción
+  correspondiente.
+- Si el cliente escribe el nombre de una operación en lugar
+  de su número, intenta identificarla.
+- No ejecutes operaciones que no estén habilitadas.
+- No inventes resultados de consultas ni confirmaciones de pagos.
+- Si el cliente solicita hablar con un asesor, respeta esa solicitud
+  y activa el proceso de transferencia disponible.
+- No inventes opciones que no estén configuradas.
 
-REGLAS:
-- No inventes información.
-- No afirmes que realizaste una operación si no se ha confirmado.
-- No inventes precios, pagos, contratos ni estados de solicitudes.
-- Si no tienes información suficiente, indícalo con honestidad.
-- No solicites datos personales innecesarios.
-- Utiliza las herramientas disponibles cuando necesites consultar
-  información o ejecutar operaciones.
-
-OBJETIVO:
-Brindar atención eficiente, resolver las dudas de los clientes
-y ayudarlos a completar sus solicitudes.
 `;
 
 const DEFAULT_AGENT_CONFIG = {
   autoReply: {
-    enabled: false,
+    enabled: true,
     replyToGroups: false,
     ignoreFromMe: true,
     cooldownSeconds: 30,
   },
+
   behavior: {
     language: 'es',
     tone: 'amigable',
     maxResponseLength: 500,
+  },
+
+  menu: {
+    enabled: true,
+    showOnFirstMessage: true,
+    showAfterInactivity: true,
+    inactivityMinutes: 30,
+
+    welcomeMessage: '¡Hola! 👋 Soy Ruby, tu asistente virtual. ¿Qué trámite deseas realizar?',
+
+    options: [
+      {
+        id: 'consultar_contrato',
+        number: 1,
+        label: 'Consultar contrato',
+        action: 'consultar_contrato',
+        enabled: true,
+      },
+      {
+        id: 'pagar_contrato',
+        number: 2,
+        label: 'Pagar contrato',
+        action: 'pagar_contrato',
+        enabled: true,
+      },
+      {
+        id: 'consultar_beneficiarios',
+        number: 3,
+        label: 'Consultar beneficiarios',
+        action: 'consultar_beneficiarios',
+        enabled: true,
+      },
+      {
+        id: 'hablar_asesor',
+        number: 4,
+        label: 'Hablar con un asesor',
+        action: 'transferir_asesor',
+        enabled: true,
+      },
+    ],
   },
 };
 
