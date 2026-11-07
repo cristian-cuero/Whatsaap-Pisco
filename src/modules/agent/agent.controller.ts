@@ -5,7 +5,6 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
-  Public,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -21,7 +20,6 @@ import { Agent } from './entities/agent.entity';
 
 @ApiTags('agent')
 @Controller('sessions/tenant/:sessionId/agent')
-@Public()
 @UseGuards(HumanJwtGuard, TenantRolesGuard)
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
