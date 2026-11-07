@@ -6,7 +6,7 @@ export class CreateAgentTables1794060035474 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE "agents" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
-        "sessionId" character varying NOT NULL,
+        "sessionId" VARCHAR(36) NOT NULL,
         "name" character varying(100) NOT NULL DEFAULT 'Asistente IA',
         "enabled" boolean NOT NULL DEFAULT false,
         "provider" character varying(50) NOT NULL DEFAULT 'openrouter',
