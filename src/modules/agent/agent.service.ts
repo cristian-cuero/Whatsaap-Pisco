@@ -5,7 +5,6 @@ import { Repository } from 'typeorm';
 import { Agent } from './entities/agent.entity';
 import { Session } from '../session/entities/session.entity';
 
-
 const DEFAULT_SYSTEM_PROMPT = `
 IDENTIDAD:
 Eres Ruby IA, una asistente virtual que atiende conversaciones
@@ -50,8 +49,6 @@ MENÚ DE ATENCIÓN:
   transferencia disponible.
 - No inventes opciones que no estén configuradas.
 `;
-
-
 const DEFAULT_AGENT_CONFIG = {
   autoReply: {
     enabled: true,
@@ -112,6 +109,36 @@ export interface UpdateAgentConfiguration {
   enabled?: boolean;
   systemPrompt?: string | null;
   config?: Record<string, unknown>;
+}
+
+//Si modificamos únicamente menu.enabled, la función conserva el resto de las propiedades del menú y de la configuración.
+type AgentConfigObject = Record<string, unknown>;
+
+function asConfigObject(value: unknown): AgentConfigObject {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    return value as AgentConfigObject;
+  }
+
+  return {};
+}
+
+function mergeAgentConfig(current: AgentConfigObject, changes: AgentConfigObject): AgentConfigObject {
+  const merged = {
+    ...current,
+    ...changes,
+  };
+
+  // Conservamos las propiedades internas de cada sección.
+  for (const section of ['autoReply', 'behavior', 'menu']) {
+    if (changes[section] !== undefined) {
+      merged[section] = {
+        ...asConfigObject(current[section]),
+        ...asConfigObject(changes[section]),
+      };
+    }
+  }
+
+  return merged;
 }
 
 @Injectable()
@@ -194,10 +221,7 @@ export class AgentService {
     }
 
     if (changes.config !== undefined) {
-      agent.config = {
-        ...(agent.config ?? {}),
-        ...changes.config,
-      };
+      agent.config = mergeAgentConfig(agent.config ?? {}, changes.config);
     }
 
     return this.agentRepository.save(agent);
