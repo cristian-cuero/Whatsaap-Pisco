@@ -32,6 +32,7 @@ export class UpdateAgentConfigurationDto {
 
   @ApiPropertyOptional({
     type: 'object',
+    additionalProperties: true,
     example: {
       autoReply: { enabled: true },
       behavior: { language: 'es', tone: 'amigable' },
