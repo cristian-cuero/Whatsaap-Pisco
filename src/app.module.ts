@@ -47,8 +47,12 @@ import { AgentToolsModule } from './core/agent-tools/agent-tools.module';
 import { IntegrationModule } from './modules/integration/integration.module';
 import { SearchModule } from './modules/search/search.module';
 import { SqlitePermissionsBoot } from './database/sqlite-file-permissions';
+
 // importando los modulos de usuarios
 import { HumanAuthModule } from './modules/human-auth/human-auth.module';
+
+// los agentes
+import { AgentModule } from './modules/agent/agent.module';
 
 // Only import QueueModule if explicitly enabled to avoid Redis connection errors
 const queueModules: Array<Type | DynamicModule> = [];
@@ -164,6 +168,7 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
             __dirname + '/modules/automation/**/*.entity{.ts,.js}',
             __dirname + '/modules/tenant/**/*.entity{.ts,.js}',
             __dirname + '/modules/user/**/*.entity{.ts,.js}',
+            __dirname + '/modules/agent/**/*.entity{.ts,.js}',
           ],
           migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
           logging: configService.get<boolean>('dataDatabase.logging', false),
@@ -314,7 +319,8 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
     ...searchModules, // Global message search (opt-out via SEARCH_ENABLED=false; default ON)
     ...mcpModules, // MCP Streamable-HTTP server (opt-in via MCP_ENABLED=true)
     ...serveStaticModules, // Bundled dashboard SPA (production single-port setup),
-    HumanAuthModule, // este es el modulo de loguin y creacion de usuarios 
+    HumanAuthModule, // este es el modulo de loguin y creacion de usuarios,
+    AgentModule, // este es el modulo de los agentes
   ],
   // Runs after every DataSource has initialized (they initialize eagerly in their provider
   // factories, and onApplicationBootstrap fires after every onModuleInit), tightening the SQLite
