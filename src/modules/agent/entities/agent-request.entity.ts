@@ -7,7 +7,7 @@ export class AgentRequest {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'uuid' })
+  // varchar to match the canonical agents.id column type.\n  @Column({ type: 'varchar' })
   agentId!: string;
 
   @ManyToOne(() => Agent, { onDelete: 'CASCADE' })
