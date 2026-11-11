@@ -94,9 +94,6 @@ export class CreateAgentTables1794060035474 implements MigrationInterface {
     }
 
     // Create indexes separately so partially pre-existing tables are handled safely.
-    if (await queryRunner.hasTable('agents')) {
-      await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_agents_sessionId" ON "agents" ("sessionId")`);
-    }
     if (await queryRunner.hasTable('agent_requests')) {
       await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_agent_requests_agentId" ON "agent_requests" ("agentId")`);
     }
@@ -104,7 +101,6 @@ export class CreateAgentTables1794060035474 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_agent_requests_agentId"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_agents_sessionId"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "agent_requests"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "agents"`);
   }
