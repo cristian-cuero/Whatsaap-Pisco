@@ -31,7 +31,7 @@ interface AgentRuntimeConfig {
 @Injectable()
 export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
   private hookId?: string;
-  private readonly greetedChats = new Set<string>();
+
 
   constructor(
     private readonly hooks: HookManager,
@@ -46,11 +46,23 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
       'message:received',
       async ctx => {
         const message = ctx.data as IncomingMessage;
+
+        console.log('[RUBY] Evento recibido:', {
+          sessionId: ctx.sessionId,
+          chatId: message?.chatId,
+          type: message?.type,
+          fromMe: message?.fromMe,
+          isGroup: message?.isGroup,
+        });
+
         await this.handleIncomingMessage(ctx.sessionId, message);
+
         return { continue: true, data: ctx.data };
       },
       50,
     );
+
+    console.log('[RUBY] Listener registrado:', this.hooks.getHookCount('message:received'));
   }
 
   onModuleDestroy(): void {
@@ -62,28 +74,38 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
     if (message.type !== 'text' || !message.body?.trim() || !message.chatId) return;
 
     const agent = await this.agents.findOne({ where: { sessionId } });
+    console.log('[RUBY] Agente encontrado:', {
+      encontrado: !!agent,
+      enabled: agent?.enabled,
+      sessionId,
+      autoReply: (agent?.config as any)?.autoReply?.enabled,
+      menu: (agent?.config as any)?.menu?.enabled,
+    });
     if (!agent?.enabled) return;
 
     const config = (agent.config ?? {}) as AgentRuntimeConfig;
     if (config.autoReply?.enabled === false || config.menu?.enabled === false) return;
-    if (config.autoReply?.ignoreFromMe !== false && message.fromMe) return;
-    if (config.menu?.showOnFirstMessage === false) return;
 
-    const greetingKey = `${sessionId}:${message.chatId}`;
-    if (this.greetedChats.has(greetingKey)) return;
+
 
     const options = (config.menu?.options ?? []).filter(option => option.enabled !== false);
-    const welcome = config.menu?.welcomeMessage?.trim() ||
-      '¡Hola! Soy Ruby, tu asistente virtual. ¿En qué puedo ayudarte?';
+    const welcome =
+      config.menu?.welcomeMessage?.trim() || '¡Hola! Soy Ruby, tu asistente virtual. ¿En qué puedo ayudarte?';
     const menuLines = options.map(option => `${option.number}. ${option.label}`);
     const text = [welcome, ...(menuLines.length ? ['', ...menuLines] : [])].join('\n');
 
     // Marcar antes del envío para evitar dos menús si llegan mensajes casi simultáneos.
-    this.greetedChats.add(greetingKey);
     try {
-      await this.messages.sendText(sessionId, { chatId: message.chatId, text });
+      console.log('[RUBY] Intentando enviar menú a:', message.chatId);
+
+      const result = await this.messages.sendText(sessionId, {
+        chatId: message.chatId,
+        text,
+      });
+
+      console.log('[RUBY] Resultado del envío:', result);
     } catch (error) {
-      this.greetedChats.delete(greetingKey);
+      console.error('[RUBY] Error enviando menú:', error);
       throw error;
     }
   }
