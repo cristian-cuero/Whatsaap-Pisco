@@ -32,7 +32,6 @@ interface AgentRuntimeConfig {
 export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
   private hookId?: string;
 
-
   constructor(
     private readonly hooks: HookManager,
     private readonly messages: MessageService,
@@ -73,6 +72,16 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
     if (!sessionId || !message || message.fromMe || message.isGroup || message.isStatusBroadcast) return;
     if (message.type !== 'text' || !message.body?.trim() || !message.chatId) return;
 
+    // Solo respondemos cuando el mensaje contiene la palabra "hola".
+    const mensaje = message.body
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase();
+
+    if (!mensaje.includes('hola')) {
+      return;
+    }
+
     const agent = await this.agents.findOne({ where: { sessionId } });
     console.log('[RUBY] Agente encontrado:', {
       encontrado: !!agent,
@@ -85,8 +94,6 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
 
     const config = (agent.config ?? {}) as AgentRuntimeConfig;
     if (config.autoReply?.enabled === false || config.menu?.enabled === false) return;
-
-
 
     const options = (config.menu?.options ?? []).filter(option => option.enabled !== false);
     const welcome =

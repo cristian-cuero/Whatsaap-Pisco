@@ -6,7 +6,7 @@
     "deleteOutDir": true,
      "assets": [
       {
-         "include": "modules/agent/operations/*.json"
+         "include": "modules/agent/agent-operations/*.json"
       }
     ],
     "watchAssets": true
