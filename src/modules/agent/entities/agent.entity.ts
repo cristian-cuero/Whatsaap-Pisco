@@ -16,7 +16,7 @@ export class Agent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'uuid', unique: true })
+  // varchar to match the canonical sessions.id column type.\n  @Column({ type: 'varchar', unique: true })
   sessionId!: string;
 
   @OneToOne(() => Session, { onDelete: 'CASCADE' })
