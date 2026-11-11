@@ -1,0 +1,24 @@
+
+{
+  "operations": [
+    {
+      "id": "consultar_contrato",
+      "name": "Consultar contrato",
+      "description": "Consulta los contratos asociados a una cédula.",
+      "enabled": true,
+      "method": "GET",
+      "path": "/api/contrato/consultaraAfiliado",
+      "auth": "pisco",
+      "parameters": {
+        "cedula": {
+          "type": "string",
+          "required": true,
+          "source": "user"
+        }
+      },
+      "query": {
+        "cedula": "{{cedula}}"
+      }
+    }
+  ]
+}
