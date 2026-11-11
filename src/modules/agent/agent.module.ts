@@ -12,6 +12,7 @@ import { MessageModule } from '../message/message.module';
 import { AgentMessageListener } from './agent-message-listener.service';
 import { ExternalApiService } from './external-api.service';
 import { AgentOperationsModule } from './agent-operations/agent-operations.module';
+import { OpenRouterService } from './openrouter.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Agent, AgentRequest, Session], 'data'),
@@ -21,6 +22,6 @@ import { AgentOperationsModule } from './agent-operations/agent-operations.modul
   ],
   controllers: [AgentController],
   exports: [TypeOrmModule, AgentService],
-  providers: [AgentService, AgentMessageListener, ExternalApiService],
+  providers: [AgentService, AgentMessageListener, ExternalApiService, OpenRouterService],
 })
 export class AgentModule {}
