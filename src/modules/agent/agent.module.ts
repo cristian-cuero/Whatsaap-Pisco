@@ -7,14 +7,17 @@ import { AgentService } from './agent.service';
 import { AgentController } from './agent.controller';
 import { Session } from '../session/entities/session.entity';
 import { HumanAuthModule } from '../human-auth/human-auth.module';
+import { MessageModule } from '../message/message.module';
+import { AgentMessageListener } from './agent-message-listener.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Agent, AgentRequest, Session], 'data'),
     HumanAuthModule,
+    MessageModule,
   ],
   controllers: [AgentController],
   exports: [TypeOrmModule, AgentService],
-  providers: [AgentService],
+  providers: [AgentService, AgentMessageListener],
 })
 export class AgentModule {}
