@@ -124,7 +124,7 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
 
     const history = await this.messages.getMessages(sessionId, {
       chatId: message.chatId,
-      limit: 20,
+      limit: 8,
       inlineMedia: false,
     });
 
