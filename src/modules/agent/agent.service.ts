@@ -109,6 +109,7 @@ export interface UpdateAgentConfiguration {
   enabled?: boolean;
   systemPrompt?: string | null;
   config?: Record<string, unknown>;
+  provider?: 'groq' | 'openrouter';
 }
 
 //Si modificamos únicamente menu.enabled, la función conserva el resto de las propiedades del menú y de la configuración.
@@ -186,7 +187,7 @@ export class AgentService {
       sessionId,
       name: 'Ruby IA',
       enabled: true,
-      provider: 'openrouter',
+      provider: 'groq',
       model: null,
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
       config: DEFAULT_AGENT_CONFIG,
@@ -222,6 +223,10 @@ export class AgentService {
 
     if (changes.config !== undefined) {
       agent.config = mergeAgentConfig(agent.config ?? {}, changes.config);
+    }
+
+    if (changes.provider !== undefined) {
+      agent.provider = changes.provider;
     }
 
     return this.agentRepository.save(agent);

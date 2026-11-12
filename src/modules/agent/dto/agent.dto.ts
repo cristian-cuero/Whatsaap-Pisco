@@ -1,14 +1,4 @@
-import {
-  IsBoolean,
-  IsInt,
-  IsObject,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-} from 'class-validator';
+import { IsBoolean, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateAgentConfigurationDto {
@@ -23,6 +13,12 @@ export class UpdateAgentConfigurationDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @ApiPropertyOptional({ example: 'groq', enum: ['groq', 'openrouter'] })
+  @IsOptional()
+  @IsString()
+  @IsIn(['groq', 'openrouter'])
+  provider?: 'groq' | 'openrouter';
 
   @ApiPropertyOptional({ example: 'Eres Ruby, una asistente virtual...', nullable: true })
   @IsOptional()

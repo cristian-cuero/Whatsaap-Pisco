@@ -9,6 +9,7 @@ import { Agent } from './entities/agent.entity';
 import { OpenRouterService, RubyMessage, RubyTool } from './openrouter.service';
 import { AgentOperationsService, AgentOperation } from './agent-operations/agent-operations.service';
 import { ExternalApiService } from './external-api.service';
+import { GroqProviderService } from './groq-provider.service';
 
 interface AgentMenuOption {
   id?: string;
@@ -49,6 +50,7 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
     private readonly hooks: HookManager,
     private readonly messages: MessageService,
     private readonly openRouter: OpenRouterService,
+    private readonly groq: GroqProviderService,
     private readonly operations: AgentOperationsService,
     private readonly externalApi: ExternalApiService,
 
@@ -115,8 +117,8 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
 
     if (config.autoReply?.enabled === false) return;
 
-    if (agent.provider !== 'openrouter') {
-      this.logger.warn(`Proveedor no soportado para el agente ${agent.id}`);
+    if (!['openrouter', 'groq'].includes(agent.provider)) {
+      this.logger.warn(`Proveedor no soportado: ${agent.provider}`);
       return;
     }
 
@@ -157,7 +159,7 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log(`Ruby procesando conversación de sesión ${sessionId}`);
 
-    const answer = await this.runAgent(messages, tools, allowedOperations);
+    const answer = await this.runAgent(messages, tools, allowedOperations, agent.provider, agent.model);
 
     if (!answer?.trim()) {
       this.logger.warn('Ruby no obtuvo una respuesta final de texto');
@@ -244,9 +246,14 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
     messages: RubyMessage[],
     tools: RubyTool[],
     allowedOperations: AgentOperation[],
+    provider: string,
+    model: string | null,
   ): Promise<string | null> {
     for (let round = 0; round < this.maxToolRounds; round++) {
-      const response = await this.openRouter.chat(null, messages, tools.length ? tools : undefined);
+      const response =
+        provider === 'groq'
+          ? await this.groq.chat(model, messages, tools.length ? tools : undefined)
+          : await this.openRouter.chat(model, messages, tools.length ? tools : undefined);
 
       const assistantMessage = response.choices[0]?.message;
       if (!assistantMessage) return null;
@@ -409,6 +416,12 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
       '- No solicites datos personales que no sean necesarios para la operación.',
       '- Para pagar_contrato, solicita la cédula, el identificador exacto del contrato y la cantidad de cuotas si no están disponibles en la conversación. La cantidad debe estar entre 1 y 12.',
       '- Nunca inventes contratos, cuotas mensuales ni valores de pago.',
+      '- Si el cliente solicita un contrato que no le pertenece, informa que no es posible realizar la operación.',
+      '- Si el usuario quiere pagar y proporciona la cédula, debe consultar primero los contratos asociados a esa cédula antes de ejecutar pagar_contrato ',
+      '- y el agente debe mostrar los contratos devueltos por la API, sin inventar información. Solo cuando el usuario elija el contrato y las cuotas debe ejecutar pagar_contrato. ',
+      'si hay mas de dos contratos  devuelttos por la api y va a pagar_contrato, el agente se los muestra que elija uno de ellos y luego preguntar las cuotas ',
+      '- No debe pedir el identificador del contrato antes de consultar.',
+      ' antes de ejecutar pagar_contrato, muestrale el valor de la cuota mensual y el valor total a pagar y que confirme si desea continuar con la operación ahi si ya puedes realizar pagar_contrato',
     );
 
     return `${basePrompt}\n${context.join('\n')}`;

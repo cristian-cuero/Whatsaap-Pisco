@@ -13,6 +13,7 @@ import { AgentMessageListener } from './agent-message-listener.service';
 import { ExternalApiService } from './external-api.service';
 import { AgentOperationsModule } from './agent-operations/agent-operations.module';
 import { OpenRouterService } from './openrouter.service';
+import { GroqProviderService } from './groq-provider.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Agent, AgentRequest, Session], 'data'),
@@ -22,6 +23,6 @@ import { OpenRouterService } from './openrouter.service';
   ],
   controllers: [AgentController],
   exports: [TypeOrmModule, AgentService],
-  providers: [AgentService, AgentMessageListener, ExternalApiService, OpenRouterService],
+  providers: [AgentService, AgentMessageListener, ExternalApiService, OpenRouterService, GroqProviderService],
 })
 export class AgentModule {}
