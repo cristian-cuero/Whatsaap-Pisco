@@ -279,15 +279,7 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
         try {
           const params = this.validateToolArguments(operation, toolCall.function.arguments);
 
-          const result = await this.externalApi.execute(
-            {
-              method: operation.method as 'GET' | 'POST',
-              path: operation.path,
-              auth: operation.auth === 'pisco' ? 'pisco' : undefined,
-              query: operation.query,
-            },
-            params,
-          );
+          const result = await this.executeOperation(operation, params);
 
           // El resultado vuelve a la IA; Ruby redactará la respuesta.
           messages.push({
@@ -415,8 +407,127 @@ export class AgentMessageListener implements OnModuleInit, OnModuleDestroy {
       '- Después de recibir el resultado, explícalo de forma breve y comprensible.',
       '- No muestres argumentos técnicos, rutas, tokens ni detalles internos.',
       '- No solicites datos personales que no sean necesarios para la operación.',
+      '- Para pagar_contrato, solicita la cédula, el identificador exacto del contrato y la cantidad de cuotas si no están disponibles en la conversación. La cantidad debe estar entre 1 y 12.',
+      '- Nunca inventes contratos, cuotas mensuales ni valores de pago.',
     );
 
     return `${basePrompt}\n${context.join('\n')}`;
+  }
+
+  /**
+   * Ejecuta las operaciones del agente.
+   * Para pagar_contrato, primero valida el contrato con Pisco
+   * y calcula el valor en el servidor.
+   */
+  private async executeOperation(operation: AgentOperation, params: Record<string, string>): Promise<unknown> {
+    // Las demás operaciones conservan su ejecución normal.
+    if (operation.id !== 'pagar_contrato') {
+      return this.externalApi.execute(
+        {
+          method: operation.method as 'GET' | 'POST',
+          path: operation.path,
+          auth: operation.auth === 'pisco' ? 'pisco' : undefined,
+          query: operation.query,
+        },
+        params,
+      );
+    }
+
+    const cedula = params.cedula?.trim();
+    const contrato = params.contrato?.trim();
+    const cuotas = Number(params.cuotas);
+
+    if (!cedula || !contrato) {
+      throw new Error('Falta la identificación o el contrato');
+    }
+
+    if (!Number.isInteger(cuotas) || cuotas < 1 || cuotas > 12) {
+      throw new Error('La cantidad de cuotas debe estar entre 1 y 12');
+    }
+
+    // Consultamos nuevamente los contratos directamente en Pisco.
+    const consulta = this.operations.getEnabledById('consultar_contrato');
+
+    const contratosResult = await this.externalApi.execute(
+      {
+        method: 'GET',
+        path: consulta.path,
+        auth: consulta.auth === 'pisco' ? 'pisco' : undefined,
+        query: consulta.query,
+      },
+      { cedula },
+    );
+
+    const contratos = this.extractContracts(contratosResult);
+
+    // El contrato debe aparecer en la respuesta de esta cédula.
+    const contratoEncontrado = contratos.find(item => {
+      const idContrato = this.getField(item, 'idcontrato');
+      return String(idContrato ?? '').trim() === contrato;
+    });
+
+    if (!contratoEncontrado) {
+      throw new Error('El contrato no pertenece a la identificación indicada');
+    }
+
+    // La cuota mensual siempre se obtiene de la respuesta de Pisco.
+    const cuotaMensual = Number(this.getField(contratoEncontrado, 'cuota'));
+
+    if (!Number.isFinite(cuotaMensual) || cuotaMensual <= 0) {
+      throw new Error('No se pudo obtener una cuota mensual válida');
+    }
+
+    const valor = Math.round(cuotaMensual * cuotas);
+
+    // Pisco recibe contrato y valor; nunca recibe cuotas.
+    return this.externalApi.execute(
+      {
+        method: 'POST',
+        path: operation.path,
+        auth: operation.auth === 'pisco' ? 'pisco' : undefined,
+      },
+      {},
+      {
+        contrato,
+        valor,
+      },
+    );
+  }
+
+  /**
+   * Acepta la respuesta directa de Pisco o una respuesta
+   * que contenga el arreglo dentro de data o contratos.
+   */
+  private extractContracts(result: unknown): Record<string, unknown>[] {
+    if (Array.isArray(result)) {
+      return result.filter(
+        (item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item),
+      );
+    }
+
+    if (result && typeof result === 'object') {
+      const response = result as Record<string, unknown>;
+
+      for (const key of ['data', 'contratos']) {
+        if (Array.isArray(response[key])) {
+          return (response[key] as unknown[]).filter(
+            (item): item is Record<string, unknown> =>
+              item !== null && typeof item === 'object' && !Array.isArray(item),
+          );
+        }
+      }
+    }
+
+    throw new Error('Pisco no devolvió una lista válida de contratos');
+  }
+
+  /**
+   * Obtiene un campo sin depender de si viene en mayúsculas
+   * o minúsculas.
+   */
+  private getField(record: Record<string, unknown>, field: string): unknown {
+    const entry = Object.entries(record).find(([key]) => key.toLowerCase() === field.toLowerCase());
+
+    return entry?.[1];
   }
 }

@@ -22,9 +22,7 @@ export class ExternalApiService {
     const baseUrl = process.env.PISCO_API_BASE_URL;
 
     if (!baseUrl) {
-      throw new ServiceUnavailableException(
-        'No está configurada la conexión con Pisco',
-      );
+      throw new ServiceUnavailableException('No está configurada la conexión con Pisco');
     }
 
     return baseUrl.replace(/\/+$/, '');
@@ -37,17 +35,14 @@ export class ExternalApiService {
   async execute(
     operation: ExternalOperation,
     params: Record<string, string>,
+    body?: Record<string, string | number>,
   ): Promise<unknown> {
     if (!['GET', 'POST'].includes(operation.method)) {
       throw new Error('Método HTTP no permitido');
     }
 
     // Solo permitimos rutas relativas de la API.
-    if (
-      !operation.path.startsWith('/api/') ||
-      operation.path.includes('..') ||
-      operation.path.includes('://')
-    ) {
+    if (!operation.path.startsWith('/api/') || operation.path.includes('..') || operation.path.includes('://')) {
       throw new Error('Ruta de operación no permitida');
     }
 
@@ -78,11 +73,18 @@ export class ExternalApiService {
       headers['x-token'] = await this.getPiscoToken();
     }
 
-    const response = await fetch(url, {
+    if (body && operation.method === 'POST') {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    const requestOptions: RequestInit = {
       method: operation.method,
       headers,
+      ...(body && operation.method === 'POST' ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(15000),
-    });
+    };
+
+    const response = await fetch(url, requestOptions);
 
     // Si el token expiró, renovamos y repetimos una sola vez.
     if (response.status === 401 && operation.auth === 'pisco') {
@@ -92,9 +94,8 @@ export class ExternalApiService {
       headers['x-token'] = await this.getPiscoToken();
 
       const retry = await fetch(url, {
-        method: operation.method,
+        ...requestOptions,
         headers,
-        signal: AbortSignal.timeout(15000),
       });
 
       if (!retry.ok) {
@@ -124,20 +125,15 @@ export class ExternalApiService {
     const password = process.env.PISCO_API_PASSWORD;
 
     if (!username || !password) {
-      throw new ServiceUnavailableException(
-        'Faltan las credenciales de Pisco en el servidor',
-      );
+      throw new ServiceUnavailableException('Faltan las credenciales de Pisco en el servidor');
     }
 
-    const response = await fetch(
-      `${this.getPiscoBaseUrl()}/api/users/login`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-        signal: AbortSignal.timeout(15000),
-      },
-    );
+    const response = await fetch(`${this.getPiscoBaseUrl()}/api/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+      signal: AbortSignal.timeout(15000),
+    });
 
     if (!response.ok) {
       this.logger.error(`Falló el login de Pisco: HTTP ${response.status}`);

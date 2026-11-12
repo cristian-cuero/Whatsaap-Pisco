@@ -1,4 +1,3 @@
-
 {
   "operations": [
     {
@@ -18,6 +17,32 @@
       },
       "query": {
         "cedula": "{{cedula}}"
+      }
+    },
+    {
+      "id": "pagar_contrato",
+      "name": "Pagar contrato",
+      "description": "Genera un enlace de pago para un contrato existente. Verifica el contrato y solicita la cantidad de cuotas.",
+      "enabled": true,
+      "method": "POST",
+      "path": "/api/contrato/crearLinkPago",
+      "auth": "pisco",
+      "parameters": {
+        "cedula": {
+          "type": "string",
+          "required": true,
+          "source": "user"
+        },
+        "contrato": {
+          "type": "string",
+          "required": true,
+          "source": "user"
+        },
+        "cuotas": {
+          "type": "number",
+          "required": true,
+          "source": "user"
+        }
       }
     }
   ]
